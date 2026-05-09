@@ -1,0 +1,9 @@
+---
+# Orden de ejecución: registry y build van primero porque corren en localhost
+# y no bloquean el arranque de las VMs.
+- import_playbook: playbooks/04-bootstrap-registry.yml
+- import_playbook: playbooks/05-build-and-push-images.yml
+- import_playbook: playbooks/01-prepare-nodes.yml
+- import_playbook: playbooks/02-install-control-plane.yml
+- import_playbook: playbooks/03-join-workers.yml
+- import_playbook: playbooks/06-deploy-app.yml

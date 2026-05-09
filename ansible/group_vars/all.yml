@@ -1,0 +1,15 @@
+---
+k3s_version: "v1.31.4+k3s1"
+
+registry_host: "192.168.56.1"
+registry_port: 5000
+
+app_namespace: "the-store"
+image_tag: "latest"
+
+services:
+  - catalog
+  - cart
+  - orders
+  - checkout
+  - ui
