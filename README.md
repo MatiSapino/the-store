@@ -1,90 +1,132 @@
-# The Store
+# The Store — Despliegue en Kubernetes con K3s y Ansible
 
-[![Build](https://github.com/jupmoreno/the-store/actions/workflows/main.yml/badge.svg)](https://github.com/jupmoreno/the-store/actions/workflows/main.yml)
+Trabajo Práctico — Despliegue y Gestión del Cluster de Kubernetes
 
-**The Store** is a modern e-commerce platform built with microservices architecture.
+**The Store** es una plataforma de e-commerce construida con arquitectura de microservicios, usada como carga de trabajo de validación para demostrar el ciclo de vida completo de un cluster Kubernetes: creación automatizada, despliegue, escalado y recuperación ante fallos.
 
-Our platform provides a complete shopping experience with:
-- **Beautiful storefront** with customizable themes and responsive design
-- **Scalable microservices** built with multiple languages and frameworks
-- **Real-time inventory management** and order processing
-
-## 🏗️ Architecture
-
-The Store is built with a microservices architecture that uses different technologies:
+## Arquitectura de la aplicación
 
 ![Architecture](/docs/images/architecture.png)
 
-| Service | Language | Description |
-|---------|----------|-------------|
-| [UI](./src/ui/) | Java (Spring Boot) | Modern web interface with themes and chat bot |
-| [Catalog](./src/catalog/) | Go | Product catalog API with search and filtering |
-| [Cart](./src/cart/) | Java (Spring Boot) | Shopping cart management with Redis/DynamoDB |
-| [Orders](./src/orders/) | Java (Spring Boot) | Order processing and management |
-| [Checkout](./src/checkout/) | Node.js (NestJS) | Checkout orchestration and payment processing |
+| Servicio | Lenguaje | Descripción |
+|----------|----------|-------------|
+| [UI](./src/ui/) | Java (Spring Boot) | Interfaz web principal |
+| [Catalog](./src/catalog/) | Go | API de catálogo de productos |
+| [Cart](./src/cart/) | Java (Spring Boot) | Gestión del carrito de compras |
+| [Orders](./src/orders/) | Java (Spring Boot) | Procesamiento de órdenes |
+| [Checkout](./src/checkout/) | Node.js (NestJS) | Orquestación del checkout |
 
+Todos los servicios usan persistencia en memoria.
 
-## 🛠️ Development
+## Infraestructura
 
-### Prerequisites
-- [Docker](https://docs.docker.com/get-docker/) running
-- [Kind](https://kind.sigs.k8s.io/docs/user/quick-start/#installation) installed
-- [Kubectl](https://kubernetes.io/docs/tasks/tools/install-kubectl/) installed
+Tres VMs Ubuntu 22.04 LTS gestionadas con Vagrant + VirtualBox, conectadas en una red host-only `192.168.56.0/24`:
 
-### Cluster Management
+| Hostname | IP | CPU | RAM | Rol |
+|----------|----|-----|-----|-----|
+| `cp` | 192.168.56.10 | 2 | 2 GB | K3s Control Plane |
+| `worker1` | 192.168.56.11 | 2 | 1.5 GB | K3s Worker |
+| `worker2` | 192.168.56.12 | 2 | 1.5 GB | K3s Worker |
 
-Use the `local.sh` script to manage your local Kubernetes cluster:
+El host del operador actúa como registry local de imágenes en `192.168.56.1:5000`.
 
-```bash
-# Create a new cluster and deploy all services
-./local.sh create-cluster
+La automatización corre con **Ansible** desde el host. K3s se instala en modo server en el CP y en modo agent en los workers.
 
-# Rebuild the entire cluster (delete and recreate)
-./local.sh rebuild-cluster
+## Requisitos previos
 
-# Delete the cluster
-./local.sh delete-cluster
+- [Vagrant 2.4+](https://developer.hashicorp.com/vagrant/install)
+- [VirtualBox 7+](https://www.virtualbox.org/wiki/Downloads)
+- [Ansible 2.16+](https://docs.ansible.com/ansible/latest/installation_guide/index.html)
+- [Docker](https://docs.docker.com/get-docker/) (para el registry local y build de imágenes)
+- [kubectl](https://kubernetes.io/docs/tasks/tools/install-kubectl/)
 
-# Check cluster status
-./local.sh status
+## Uso
 
-# Build and load Docker images only
-./local.sh reload-images
-```
-
-After running `./local.sh create-cluster`, access The Store at: **http://localhost**.
-
-### Testing
-
-#### E2E Testing
-
-Run end-to-end tests to validate the complete system:
+### 1. Crear el cluster y desplegar la aplicación
 
 ```bash
-# Run e2e tests on existing cluster
-./local.sh e2e-test
+# Levantar las 3 VMs
+vagrant up
+
+# Ejecutar el playbook completo: registry → build → cluster → deploy
+ansible-playbook ansible/site.yml
 ```
 
-**Note**: These tests are run automatically when creating or rebuilding the cluster. You can skip them using the `--skip-tests` parameter for faster setup:
+La aplicación queda disponible en `http://192.168.56.10` una vez que todos los pods estén en `Running`.
+
+### 2. Verificar el estado del cluster
 
 ```bash
-# Create cluster without running tests (faster setup)
-./local.sh create-cluster --skip-tests
-
-# Rebuild cluster without running tests
-./local.sh rebuild-cluster --skip-tests
+kubectl --kubeconfig=~/.kube/config-the-store get nodes
+kubectl --kubeconfig=~/.kube/config-the-store get pods -n the-store
 ```
 
-#### Load Testing
-Run load generator tests to validate system performance:
+### 3. Escalar agregando un worker
 
 ```bash
-# Run load generator tests
-./local.sh load-test
+# 1. Descomentar worker3 en Vagrantfile y en ansible/inventory/hosts.yml
+# 2. Levantar la nueva VM
+vagrant up worker3
+
+# 3. Preparar el nodo y unirlo al cluster
+ansible-playbook ansible/playbooks/01-prepare-nodes.yml --limit worker3
+ansible-playbook ansible/playbooks/03-join-workers.yml  --limit worker3
 ```
 
-The load generator will run performance tests against your local cluster for 10 minutes (or until manually stopped) to validate system behavior under load.
+### 4. Teardown completo
 
----
+```bash
+# Destruir todas las VMs (el cluster desaparece con ellas)
+vagrant destroy -f
+```
 
-**The Store** - Built with ❤️ for modern e-commerce
+### Reconstruir desde cero
+
+```bash
+vagrant destroy -f && vagrant up && ansible-playbook ansible/site.yml
+```
+
+## Casos de uso del TP
+
+| # | Caso | Comando principal | Validación |
+|---|------|-------------------|------------|
+| 1 | Crear cluster desde VMs limpias | `vagrant up && ansible-playbook ansible/site.yml` | `kubectl get nodes` → 3 nodos Ready |
+| 2 | Desplegar The Store | Incluido en `site.yml` (play 06) | `curl http://192.168.56.10` → UI responde |
+| 3 | Escalado horizontal | `vagrant up worker3` + plays 01 y 03 sobre `worker3` | `kubectl get nodes` → 4 nodos Ready |
+| 4 | Teardown y redespliegue | `vagrant destroy -f && vagrant up && ansible-playbook site.yml` | Cluster funcional en < 10 min |
+
+## Tests
+
+### E2E (Cypress)
+
+Valida el flujo completo de la aplicación contra el cluster activo:
+
+```bash
+bash src/e2e/scripts/run-docker.sh -n host 'http://192.168.56.10'
+```
+
+### Load testing
+
+Corre el generador de carga durante 10 minutos:
+
+```bash
+bash src/load-generator/scripts/run-docker.sh -n host -t 'http://192.168.56.10' -d 600
+```
+
+## Estructura del repositorio
+
+```
+the-store/
+├── ansible/
+│   ├── ansible.cfg
+│   ├── inventory/hosts.yml       # 3 nodos con IPs fijas
+│   ├── group_vars/all.yml        # variables globales (versión K3s, registry, etc.)
+│   ├── site.yml                  # orquestador principal
+│   ├── playbooks/                # 7 plays (prepare → cp → workers → registry → build → deploy → teardown)
+│   └── files/                    # config containerd para registry inseguro
+├── dist/kubernetes.yaml          # manifiestos K8s de los 5 microservicios
+├── src/                          # código fuente de los microservicios (no modificar)
+├── docs/                         # diagramas
+├── samples/                      # datos de demo
+└── Vagrantfile                   # define las 3 VMs
+```
