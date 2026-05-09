@@ -1,0 +1,11 @@
+---
+# Levanta un Docker Registry v2 local en el host del operador (192.168.56.1:5000).
+# Los workers hacen pull de imágenes desde esta dirección.
+# Tareas a implementar:
+#   - Verificar que Docker está corriendo
+#   - Levantar container registry:2 en puerto 5000 con restart_policy=always
+#   - Health-check: curl http://192.168.56.1:5000/v2/ devuelve 200
+- name: Bootstrap del Docker Registry local
+  hosts: registry
+  gather_facts: false
+  tasks: []

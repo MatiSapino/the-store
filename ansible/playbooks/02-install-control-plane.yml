@@ -1,0 +1,18 @@
+---
+# Instala K3s en modo servidor en el Control Plane.
+# Tareas a implementar:
+#   - Skip idempotente si /usr/local/bin/k3s ya existe y k3s.service está activo
+#   - Instalar K3s con:
+#       --disable=traefik (usamos nginx-ingress)
+#       --disable=servicelb
+#       --node-ip=192.168.56.10
+#       --flannel-iface=eth1 (eth0 es NAT de Vagrant, Flannel debe ir por la host-only)
+#       --tls-san=192.168.56.10
+#   - Esperar /var/lib/rancher/k3s/server/node-token
+#   - Guardar el token en un fact para usarlo en 03-join-workers.yml
+#   - Copiar /etc/rancher/k3s/k3s.yaml al host operador (reescribir server URL a 192.168.56.10:6443)
+- name: Instalar K3s Control Plane
+  hosts: control_plane
+  become: true
+  gather_facts: true
+  tasks: []

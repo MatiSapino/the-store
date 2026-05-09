@@ -1,0 +1,18 @@
+---
+# Despliega The Store en el cluster K3s.
+# Tareas a implementar:
+#   1. Instalar nginx-ingress (baremetal manifest oficial v1.13.1)
+#      Patch: hostNetwork=true en el Deployment del controller
+#             nodeSelector: cp (para que bindee 192.168.56.10:80)
+#      Wait: pod ingress-nginx/controller Ready
+#   2. Crear namespace "the-store"
+#   3. Renderizar ansible/templates/kubernetes.yaml.j2 → /tmp/kubernetes.yaml
+#      Sustituciones: imágenes → registry local, imagePullPolicy → Always
+#   4. kubectl apply -n the-store -f /tmp/kubernetes.yaml
+#   5. kubectl wait deployments --all --timeout=300s
+#   6. Imprimir URL de acceso: http://192.168.56.10/
+- name: Desplegar The Store en K3s
+  hosts: control_plane
+  become: true
+  gather_facts: true
+  tasks: []

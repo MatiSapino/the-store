@@ -1,0 +1,16 @@
+---
+# Une los nodos worker al cluster K3s como agentes.
+# Tareas a implementar:
+#   - Skip idempotente si k3s-agent.service ya está activo
+#   - Usar el token del CP desde hostvars['cp'].k3s_node_token
+#   - Instalar K3s en modo agente:
+#       K3S_URL=https://192.168.56.10:6443
+#       K3S_TOKEN={{ token }}
+#       --node-ip={{ ansible_host }}
+#       --flannel-iface=eth1
+#   - Verificar que el nodo aparece en kubectl get nodes (desde el CP)
+- name: Unir workers al cluster K3s
+  hosts: workers
+  become: true
+  gather_facts: true
+  tasks: []

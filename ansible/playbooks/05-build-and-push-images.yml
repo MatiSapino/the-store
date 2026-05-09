@@ -1,0 +1,11 @@
+---
+# Construye las imágenes Docker de los 5 microservicios y las sube al registry local.
+# Usa las variables: registry_host, registry_port, image_tag, services (de group_vars/all.yml)
+# Tareas a implementar:
+#   - Loop sobre services [catalog, cart, orders, checkout, ui]:
+#       docker build -t {registry_host}:{registry_port}/the-store-{svc}:{image_tag} src/{svc}/
+#       docker push {registry_host}:{registry_port}/the-store-{svc}:{image_tag}
+- name: Construir y subir imágenes al registry local
+  hosts: registry
+  gather_facts: false
+  tasks: []
