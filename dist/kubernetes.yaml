@@ -101,8 +101,8 @@ spec:
             readOnlyRootFilesystem: true
             runAsNonRoot: true
             runAsUser: 1000
-          image: "the-store-catalog:latest"
-          imagePullPolicy: IfNotPresent
+          image: "192.168.56.1:5000/the-store-catalog:latest"
+          imagePullPolicy: Always
           ports:
             - name: http
               containerPort: 8080
@@ -222,8 +222,8 @@ spec:
             readOnlyRootFilesystem: true
             runAsNonRoot: true
             runAsUser: 1000
-          image: "the-store-cart:latest"
-          imagePullPolicy: IfNotPresent
+          image: "192.168.56.1:5000/the-store-cart:latest"
+          imagePullPolicy: Always
           ports:
             - name: http
               containerPort: 8080
@@ -361,8 +361,8 @@ spec:
             readOnlyRootFilesystem: true
             runAsNonRoot: true
             runAsUser: 1000
-          image: "the-store-orders:latest"
-          imagePullPolicy: IfNotPresent
+          image: "192.168.56.1:5000/the-store-orders:latest"
+          imagePullPolicy: Always
           ports:
             - name: http
               containerPort: 8080
@@ -480,8 +480,8 @@ spec:
             readOnlyRootFilesystem: true
             runAsNonRoot: true
             runAsUser: 1000
-          image: "the-store-checkout:latest"
-          imagePullPolicy: IfNotPresent
+          image: "192.168.56.1:5000/the-store-checkout:latest"
+          imagePullPolicy: Always
           ports:
             - name: http
               containerPort: 8080
@@ -618,8 +618,8 @@ spec:
             readOnlyRootFilesystem: true
             runAsNonRoot: true
             runAsUser: 1000
-          image: "the-store-ui:latest"
-          imagePullPolicy: IfNotPresent
+          image: "192.168.56.1:5000/the-store-ui:latest"
+          imagePullPolicy: Always
           ports:
             - name: http
               containerPort: 8080

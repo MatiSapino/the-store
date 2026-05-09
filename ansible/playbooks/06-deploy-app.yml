@@ -6,11 +6,11 @@
 #             nodeSelector: cp (para que bindee 192.168.56.10:80)
 #      Wait: pod ingress-nginx/controller Ready
 #   2. Crear namespace "the-store"
-#   3. Renderizar ansible/templates/kubernetes.yaml.j2 → /tmp/kubernetes.yaml
-#      Sustituciones: imágenes → registry local, imagePullPolicy → Always
-#   4. kubectl apply -n the-store -f /tmp/kubernetes.yaml
-#   5. kubectl wait deployments --all --timeout=300s
-#   6. Imprimir URL de acceso: http://192.168.56.10/
+#   3. Copiar dist/kubernetes.yaml al CP y aplicarlo:
+#      kubectl apply -n the-store -f dist/kubernetes.yaml
+#      (las imágenes ya apuntan a 192.168.56.1:5000 directamente en el archivo)
+#   4. kubectl wait deployments --all --timeout=300s
+#   5. Imprimir URL de acceso: http://192.168.56.10/
 - name: Desplegar The Store en K3s
   hosts: control_plane
   become: true
