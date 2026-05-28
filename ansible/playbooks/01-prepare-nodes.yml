@@ -12,4 +12,83 @@
   hosts: cluster
   become: true
   gather_facts: true
-  tasks: []
+  tasks:
+
+    - name: Actualizar apt y instalar dependencias base
+      ansible.builtin.apt:
+        name:
+          - curl
+          - ca-certificates
+          - iptables
+        state: present
+        update_cache: true
+
+    - name: Desactivar swap en caliente
+      ansible.builtin.command: swapoff -a
+      when: ansible_swaptotal_mb > 0
+      changed_when: ansible_swaptotal_mb > 0
+
+    - name: Comentar entradas de swap en /etc/fstab
+      ansible.builtin.replace:
+        path: /etc/fstab
+        regexp: '^([^#].*\sswap\s.*)$'
+        replace: '# \1'
+
+    - name: Cargar módulos de kernel al arranque
+      ansible.builtin.copy:
+        dest: /etc/modules-load.d/k3s.conf
+        content: |
+          br_netfilter
+          overlay
+        mode: '0644'
+
+    - name: Cargar br_netfilter ahora
+      community.general.modprobe:
+        name: br_netfilter
+        state: present
+
+    - name: Cargar overlay ahora
+      community.general.modprobe:
+        name: overlay
+        state: present
+
+    - name: Configurar parámetros sysctl para K3s
+      ansible.posix.sysctl:
+        name: "{{ item.key }}"
+        value: "{{ item.value }}"
+        state: present
+        sysctl_file: /etc/sysctl.d/99-k3s.conf
+        reload: true
+      loop:
+        - { key: "net.bridge.bridge-nf-call-iptables", value: "1" }
+        - { key: "net.bridge.bridge-nf-call-ip6tables", value: "1" }
+        - { key: "net.ipv4.ip_forward", value: "1" }
+
+    - name: Crear directorio /etc/rancher/k3s
+      ansible.builtin.file:
+        path: /etc/rancher/k3s
+        state: directory
+        mode: '0755'
+
+    - name: Copiar registries.yaml para containerd
+      ansible.builtin.copy:
+        src: "{{ playbook_dir | dirname }}/files/registries.yaml"
+        dest: /etc/rancher/k3s/registries.yaml
+        mode: '0644'
+
+    - name: Verificar estado de ufw
+      ansible.builtin.command: ufw status
+      register: ufw_status
+      changed_when: false
+      failed_when: false
+
+    - name: Abrir puertos necesarios en ufw (si está activo)
+      community.general.ufw:
+        rule: allow
+        port: "{{ item.port }}"
+        proto: "{{ item.proto }}"
+      loop:
+        - { port: "6443", proto: "tcp" }   # API server K3s
+        - { port: "10250", proto: "tcp" }  # Kubelet
+        - { port: "8472", proto: "udp" }   # Flannel VXLAN
+      when: "'active' in ufw_status.stdout"
