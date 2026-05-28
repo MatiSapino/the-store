@@ -1,4 +1,6 @@
 .DS_Store
+.vagrant/
+ansible/k3s.yaml
 *.tfvars
 .terraform
 *.tfstate*
