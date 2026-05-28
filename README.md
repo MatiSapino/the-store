@@ -44,13 +44,22 @@ La automatización corre con **Ansible** desde el host. K3s se instala en modo s
 
 ### 1. Crear el cluster y desplegar la aplicación
 
-```bash
-# Levantar las 3 VMs
-vagrant up
+En Windows se recomienda separar responsabilidades:
 
-# Ejecutar el playbook completo: registry → build → cluster → deploy
-ansible-playbook ansible/site.yml
+- Ejecutar **Vagrant/VirtualBox desde PowerShell**, porque las VMs viven en el host Windows.
+- Ejecutar **Ansible desde WSL**, usando inventario explícito. Si el repo está bajo `/mnt/c`, Ansible puede ignorar `ansible/ansible.cfg` por permisos world-writable del filesystem de Windows.
+
+```bash
+# PowerShell, desde C:\Users\EMINE\Documents\GitHub\the-store
+vagrant up
 ```
+
+```bash
+# WSL, desde /mnt/c/Users/EMINE/Documents/GitHub/the-store
+bash scripts/ansible-wsl.sh
+```
+
+El script copia la clave insegura de Vagrant al home de WSL si hace falta, limpia las host keys de `192.168.56.10-12` y ejecuta el playbook con `ANSIBLE_HOST_KEY_CHECKING=False` e inventario explícito.
 
 La aplicación queda disponible en `http://192.168.56.10` una vez que todos los pods estén en `Running`.
 
@@ -65,12 +74,12 @@ kubectl --kubeconfig=~/.kube/config-the-store get pods -n the-store
 
 ```bash
 # 1. Descomentar worker3 en Vagrantfile y en ansible/inventory/hosts.yml
-# 2. Levantar la nueva VM
+# 2. PowerShell: levantar la nueva VM
 vagrant up worker3
 
-# 3. Preparar el nodo y unirlo al cluster
-ansible-playbook ansible/playbooks/01-prepare-nodes.yml --limit worker3
-ansible-playbook ansible/playbooks/03-join-workers.yml  --limit worker3
+# 3. WSL: preparar el nodo y unirlo al cluster
+bash scripts/ansible-wsl.sh ansible/playbooks/01-prepare-nodes.yml --limit worker3
+bash scripts/ansible-wsl.sh ansible/playbooks/03-join-workers.yml  --limit worker3
 ```
 
 ### 4. Teardown completo
@@ -83,17 +92,22 @@ vagrant destroy -f
 ### Reconstruir desde cero
 
 ```bash
-vagrant destroy -f && vagrant up && ansible-playbook ansible/site.yml
+# PowerShell
+vagrant destroy -f
+vagrant up
+
+# WSL
+bash scripts/ansible-wsl.sh
 ```
 
 ## Casos de uso del TP
 
 | # | Caso | Comando principal | Validación |
 |---|------|-------------------|------------|
-| 1 | Crear cluster desde VMs limpias | `vagrant up && ansible-playbook ansible/site.yml` | `kubectl get nodes` → 3 nodos Ready |
+| 1 | Crear cluster desde VMs limpias | `vagrant up` en PowerShell + `bash scripts/ansible-wsl.sh` en WSL | `kubectl get nodes` → 3 nodos Ready |
 | 2 | Desplegar The Store | Incluido en `site.yml` (play 06) | `curl http://192.168.56.10` → UI responde |
-| 3 | Escalado horizontal | `vagrant up worker3` + plays 01 y 03 sobre `worker3` | `kubectl get nodes` → 4 nodos Ready |
-| 4 | Teardown y redespliegue | `vagrant destroy -f && vagrant up && ansible-playbook site.yml` | Cluster funcional en < 10 min |
+| 3 | Escalado horizontal | `vagrant up worker3` + `scripts/ansible-wsl.sh` con plays 01 y 03 sobre `worker3` | `kubectl get nodes` → 4 nodos Ready |
+| 4 | Teardown y redespliegue | `vagrant destroy -f`, `vagrant up` y `bash scripts/ansible-wsl.sh` | Cluster funcional en < 10 min |
 
 ## Tests
 
