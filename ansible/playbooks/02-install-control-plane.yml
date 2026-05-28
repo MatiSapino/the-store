@@ -1,18 +1,54 @@
 ---
-# Instala K3s en modo servidor en el Control Plane.
-# Tareas a implementar:
-#   - Skip idempotente si /usr/local/bin/k3s ya existe y k3s.service está activo
-#   - Instalar K3s con:
-#       --disable=traefik (usamos nginx-ingress)
-#       --disable=servicelb
-#       --node-ip=192.168.56.10
-#       --flannel-iface=eth1 (eth0 es NAT de Vagrant, Flannel debe ir por la host-only)
-#       --tls-san=192.168.56.10
-#   - Esperar /var/lib/rancher/k3s/server/node-token
-#   - Guardar el token en un fact para usarlo en 03-join-workers.yml
-#   - Copiar /etc/rancher/k3s/k3s.yaml al host operador (reescribir server URL a 192.168.56.10:6443)
 - name: Instalar K3s Control Plane
   hosts: control_plane
   become: true
   gather_facts: true
-  tasks: []
+  tasks:
+
+    - name: Verificar si k3s.service ya está activo
+      ansible.builtin.shell: systemctl is-active k3s
+      register: k3s_active
+      changed_when: false
+      failed_when: false
+
+    - name: Instalar K3s en modo servidor
+      ansible.builtin.shell: >-
+        curl -sfL https://get.k3s.io | sh -s - server
+        --disable=traefik
+        --disable=servicelb
+        --node-ip={{ k3s_node_ip }}
+        --flannel-iface=eth1
+        --tls-san={{ k3s_node_ip }}
+      environment:
+        INSTALL_K3S_VERSION: "{{ k3s_version }}"
+      when: k3s_active.stdout != 'active'
+      changed_when: true
+
+    - name: Esperar a que el node-token esté disponible
+      ansible.builtin.wait_for:
+        path: /var/lib/rancher/k3s/server/node-token
+        state: present
+        timeout: 120
+
+    - name: Leer el node-token
+      ansible.builtin.slurp:
+        src: /var/lib/rancher/k3s/server/node-token
+      register: k3s_token_raw
+
+    - name: Guardar token como fact del host
+      ansible.builtin.set_fact:
+        k3s_node_token: "{{ k3s_token_raw.content | b64decode | trim }}"
+
+    - name: Copiar kubeconfig al host operador
+      ansible.builtin.fetch:
+        src: /etc/rancher/k3s/k3s.yaml
+        dest: "{{ playbook_dir | dirname }}/k3s.yaml"
+        flat: true
+
+    - name: Reescribir server URL en kubeconfig local
+      ansible.builtin.replace:
+        path: "{{ playbook_dir | dirname }}/k3s.yaml"
+        regexp: 'server: https://127\.0\.0\.1:6443'
+        replace: 'server: https://{{ k3s_node_ip }}:6443'
+      delegate_to: localhost
+      become: false
