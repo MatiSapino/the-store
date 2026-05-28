@@ -17,7 +17,7 @@
         --disable=traefik
         --disable=servicelb
         --node-ip={{ k3s_node_ip }}
-        --flannel-iface=eth1
+        --flannel-iface=enp0s8
         --tls-san={{ k3s_node_ip }}
       environment:
         INSTALL_K3S_VERSION: "{{ k3s_version }}"
