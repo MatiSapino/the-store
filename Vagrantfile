@@ -2,6 +2,10 @@ Vagrant.configure("2") do |config|
   config.vm.box = "ubuntu/jammy64"
   config.vm.box_check_update = false
 
+  # Las boxes a veces tardan más de 5 min en levantar SSH al bootear varias VMs
+  # a la vez; subimos el timeout para que Vagrant no corte antes de configurar la red.
+  config.vm.boot_timeout = 600
+
   # Clave SSH insegura compartida — OK para laboratorio local
   config.ssh.insert_key = false
 
