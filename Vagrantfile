@@ -1,18 +1,23 @@
 Vagrant.configure("2") do |config|
-  config.vm.box = "ubuntu/jammy64"
+  # Detect macOS Apple Silicon to choose provider and box automatically
+  is_arm_mac = RUBY_PLATFORM.match?(/arm64.*darwin|darwin.*arm64/)
+
+  config.vm.box = is_arm_mac ? "perk/ubuntu-2204-arm64" : "bento/ubuntu-22.04"
   config.vm.box_check_update = false
 
-  # Las boxes a veces tardan más de 5 min en levantar SSH al bootear varias VMs
-  # a la vez; subimos el timeout para que Vagrant no corte antes de configurar la red.
+  # Boxes can take longer than 5 min to expose SSH when booting several VMs
+  # at once; raise the timeout so Vagrant doesn't cut out before network is up.
   config.vm.boot_timeout = 600
 
-  # Clave SSH insegura compartida — OK para laboratorio local
+  # Shared insecure key — fine for a local lab
   config.ssh.insert_key = false
 
   nodes = [
-    { name: "cp",      ip: "192.168.56.10", cpus: 2, memory: 2048 },
-    { name: "worker1", ip: "192.168.56.11", cpus: 2, memory: 1536 },
-    { name: "worker2", ip: "192.168.56.12", cpus: 2, memory: 1536 },
+    { name: "cp",      ip: "192.168.56.10", cpus: 2, memory: 2048, ssh_port: 50010 },
+    { name: "worker1", ip: "192.168.56.11", cpus: 2, memory: 1536, ssh_port: 50011 },
+    { name: "worker2", ip: "192.168.56.12", cpus: 2, memory: 1536, ssh_port: 50012 },
+    # Uncomment to add a fourth node for the horizontal-scaling use case:
+    # { name: "worker3", ip: "192.168.56.13", cpus: 2, memory: 1536, ssh_port: 50013 },
   ]
 
   nodes.each do |node|
@@ -20,11 +25,30 @@ Vagrant.configure("2") do |config|
       vm.vm.hostname = node[:name]
       vm.vm.network "private_network", ip: node[:ip]
 
-      vm.vm.provider "virtualbox" do |vb|
-        vb.name   = "the-store-#{node[:name]}"
-        vb.cpus   = node[:cpus]
-        vb.memory = node[:memory]
-        vb.gui    = false
+      if is_arm_mac
+        # vagrant-qemu manages its own SSH port via qm.ssh_port;
+        # the standard forwarded_port directive is ignored by this provider.
+        vm.vm.provider "qemu" do |qm|
+          qm.arch     = "aarch64"
+          qm.machine  = "virt,accel=hvf,highmem=off"
+          qm.cpu      = "host"
+          qm.net_device = "virtio-net-pci"
+          qm.cpus     = node[:cpus]
+          qm.memory   = node[:memory]
+          qm.ssh_port = node[:ssh_port]
+        end
+      else
+        vm.vm.provider "virtualbox" do |vb|
+          vb.name   = "the-store-#{node[:name]}"
+          vb.cpus   = node[:cpus]
+          vb.memory = node[:memory]
+          vb.gui    = false
+        end
+
+        vm.vm.provider "libvirt" do |lv|
+          lv.cpus   = node[:cpus]
+          lv.memory = node[:memory]
+        end
       end
     end
   end

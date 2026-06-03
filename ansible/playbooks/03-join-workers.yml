@@ -29,7 +29,7 @@
     - name: Instalar K3s en modo agente
       ansible.builtin.shell: >-
         curl -sfL https://get.k3s.io | sh -s - agent
-        --node-ip={{ ansible_host }}
+        --node-ip={{ k3s_node_ip }}
         --flannel-iface=enp0s8
       environment:
         INSTALL_K3S_VERSION: "{{ k3s_version }}"
