@@ -1,16 +1,52 @@
 ---
-# Une los nodos worker al cluster K3s como agentes.
-# Tareas a implementar:
-#   - Skip idempotente si k3s-agent.service ya está activo
-#   - Usar el token del CP desde hostvars['cp'].k3s_node_token
-#   - Instalar K3s en modo agente:
-#       K3S_URL=https://192.168.56.10:6443
-#       K3S_TOKEN={{ token }}
-#       --node-ip={{ ansible_host }}
-#       --flannel-iface=eth1
-#   - Verificar que el nodo aparece en kubectl get nodes (desde el CP)
+- name: Obtener token del Control Plane
+  hosts: control_plane
+  become: true
+  gather_facts: false
+  tasks:
+
+    - name: Leer el node-token desde disco
+      ansible.builtin.slurp:
+        src: /var/lib/rancher/k3s/server/node-token
+      register: k3s_token_raw
+
+    - name: Guardar token como fact del host
+      ansible.builtin.set_fact:
+        k3s_node_token: "{{ k3s_token_raw.content | b64decode | trim }}"
+
 - name: Unir workers al cluster K3s
   hosts: workers
   become: true
   gather_facts: true
-  tasks: []
+  tasks:
+
+    - name: Verificar si k3s-agent.service ya está activo
+      ansible.builtin.shell: systemctl is-active k3s-agent
+      register: k3s_agent_active
+      changed_when: false
+      failed_when: false
+
+    - name: Instalar K3s en modo agente
+      ansible.builtin.shell: >-
+        curl -sfL https://get.k3s.io | sh -s - agent
+        --node-ip={{ ansible_host }}
+        --flannel-iface=enp0s8
+      environment:
+        INSTALL_K3S_VERSION: "{{ k3s_version }}"
+        K3S_URL: "https://192.168.56.10:6443"
+        K3S_TOKEN: "{{ hostvars['cp'].k3s_node_token }}"
+      when: k3s_agent_active.stdout != 'active'
+      changed_when: true
+
+    - name: Verificar que el nodo aparece como Ready en kubectl get nodes
+      ansible.builtin.shell: >-
+        kubectl get node {{ inventory_hostname }} --no-headers 2>/dev/null
+      environment:
+        KUBECONFIG: /etc/rancher/k3s/k3s.yaml
+      register: node_status
+      retries: 20
+      delay: 10
+      until: node_status.stdout is defined and 'Ready' in node_status.stdout
+      delegate_to: cp
+      become: true
+      changed_when: false
