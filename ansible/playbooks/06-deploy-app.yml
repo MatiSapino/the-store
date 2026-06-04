@@ -1,33 +1,46 @@
 ---
 # Despliega The Store en el cluster K3s.
-# Tareas a implementar:
+# Tareas principales:
 #   1. Instalar nginx-ingress (baremetal manifest oficial v1.13.1)
 #      Patch: hostNetwork=true en el Deployment del controller
-#             nodeSelector: cp (para que bindee 192.168.56.10:80)
+#             nodeSelector: k3s_ingress_node_name
 #      Wait: pod ingress-nginx/controller Ready
 #   2. Crear namespace "the-store"
 #   3. Copiar dist/kubernetes.yaml al CP y aplicarlo:
 #      kubectl apply -n the-store -f dist/kubernetes.yaml
-#      (las imágenes ya apuntan a 192.168.56.1:5000 directamente en el archivo)
+#      (las imágenes se reescriben con registry_endpoint antes del apply)
 #   4. kubectl wait deployments --all --timeout=300s
-#   5. Imprimir URL de acceso: http://192.168.56.10/
+#   5. Imprimir URL de acceso usando k3s_node_ip
 - name: Desplegar The Store en K3s
   hosts: control_plane
   become: true
   gather_facts: false
   vars:
     ingress_nginx_version: "v1.13.1"
+    ingress_nginx_manifest_url: "https://raw.githubusercontent.com/kubernetes/ingress-nginx/controller-{{ ingress_nginx_version }}/deploy/static/provider/baremetal/deploy.yaml"
+    ingress_nginx_manifest_path: "/tmp/ingress-nginx-{{ ingress_nginx_version }}.yaml"
   tasks:
+    - name: Descargar manifiesto nginx-ingress controller (baremetal)
+      ansible.builtin.get_url:
+        url: "{{ ingress_nginx_manifest_url }}"
+        dest: "{{ ingress_nginx_manifest_path }}"
+        mode: '0644'
+        checksum: "{{ ingress_nginx_manifest_checksum | default(omit) }}"
+
     - name: Instalar nginx-ingress controller (baremetal)
-      ansible.builtin.shell: >-
-        kubectl apply -f
-        https://raw.githubusercontent.com/kubernetes/ingress-nginx/controller-{{ ingress_nginx_version }}/deploy/static/provider/baremetal/deploy.yaml
+      ansible.builtin.command:
+        argv:
+          - kubectl
+          - apply
+          - -f
+          - "{{ ingress_nginx_manifest_path }}"
       environment:
         KUBECONFIG: /etc/rancher/k3s/k3s.yaml
-      changed_when: true
+      register: ingress_apply
+      changed_when: "'created' in ingress_apply.stdout or 'configured' in ingress_apply.stdout"
 
     - name: Esperar a que el Deployment ingress-nginx-controller exista
-      ansible.builtin.shell: kubectl -n ingress-nginx get deployment ingress-nginx-controller
+      ansible.builtin.command: kubectl -n ingress-nginx get deployment ingress-nginx-controller
       environment:
         KUBECONFIG: /etc/rancher/k3s/k3s.yaml
       register: ingress_deploy
@@ -36,43 +49,50 @@
       until: ingress_deploy.rc == 0
       changed_when: false
 
-    - name: Parchear ingress-nginx-controller con hostNetwork=true
-      ansible.builtin.shell: |
-        kubectl -n ingress-nginx patch deployment ingress-nginx-controller \
-          --type=json \
-          -p '[{"op":"add","path":"/spec/template/spec/hostNetwork","value":true}]'
+    - name: Parchear ingress-nginx-controller para exponer HTTP en el Control Plane
+      ansible.builtin.command:
+        argv:
+          - kubectl
+          - -n
+          - ingress-nginx
+          - patch
+          - deployment
+          - ingress-nginx-controller
+          - --type=merge
+          - -p
+          - '{"spec":{"template":{"spec":{"hostNetwork":true,"dnsPolicy":"ClusterFirstWithHostNet","nodeSelector":{"kubernetes.io/hostname":"{{ k3s_ingress_node_name }}"}}}}}'
       environment:
         KUBECONFIG: /etc/rancher/k3s/k3s.yaml
-      changed_when: true
+      register: ingress_patch
+      changed_when: "'no change' not in ingress_patch.stdout"
 
-    - name: Agregar nodeSelector kubernetes.io/hostname=cp al controller
-      ansible.builtin.shell: |
-        kubectl -n ingress-nginx patch deployment ingress-nginx-controller \
-          --type=merge \
-          -p '{"spec":{"template":{"spec":{"nodeSelector":{"kubernetes.io/hostname":"cp"}}}}}'
-      environment:
-        KUBECONFIG: /etc/rancher/k3s/k3s.yaml
-      changed_when: true
-
-    - name: Esperar a que el pod ingress-nginx-controller esté Ready
-      ansible.builtin.shell: |
-        kubectl wait pod \
-          -n ingress-nginx \
-          -l app.kubernetes.io/component=controller \
-          --for=condition=Ready \
-          --timeout=300s
+    - name: Esperar rollout de ingress-nginx-controller
+      ansible.builtin.command:
+        argv:
+          - kubectl
+          - -n
+          - ingress-nginx
+          - rollout
+          - status
+          - deployment/ingress-nginx-controller
+          - --timeout=300s
       environment:
         KUBECONFIG: /etc/rancher/k3s/k3s.yaml
       changed_when: false
 
-    - name: Crear namespace {{ app_namespace }}
-      ansible.builtin.shell: |
-        kubectl get namespace {{ app_namespace }} 2>/dev/null \
-          || kubectl create namespace {{ app_namespace }}
+    - name: Verificar namespace {{ app_namespace }}
+      ansible.builtin.command: kubectl get namespace {{ app_namespace }}
       environment:
         KUBECONFIG: /etc/rancher/k3s/k3s.yaml
-      register: ns_result
-      changed_when: "'created' in ns_result.stdout"
+      register: namespace_get
+      changed_when: false
+      failed_when: false
+
+    - name: Crear namespace {{ app_namespace }}
+      ansible.builtin.command: kubectl create namespace {{ app_namespace }}
+      environment:
+        KUBECONFIG: /etc/rancher/k3s/k3s.yaml
+      when: namespace_get.rc != 0
 
     - name: Copiar dist/kubernetes.yaml al Control Plane
       ansible.builtin.copy:
@@ -80,18 +100,37 @@
         dest: /tmp/kubernetes.yaml
         mode: '0644'
 
+    - name: Reescribir registry de imágenes en manifiesto de aplicación
+      ansible.builtin.replace:
+        path: /tmp/kubernetes.yaml
+        regexp: '([0-9]{1,3}\.){3}[0-9]{1,3}:[0-9]+/the-store-'
+        replace: "{{ registry_endpoint }}/the-store-"
+
     - name: Aplicar manifiesto de la aplicación
-      ansible.builtin.shell: kubectl apply -n {{ app_namespace }} -f /tmp/kubernetes.yaml
+      ansible.builtin.command:
+        argv:
+          - kubectl
+          - apply
+          - -n
+          - "{{ app_namespace }}"
+          - -f
+          - /tmp/kubernetes.yaml
       environment:
         KUBECONFIG: /etc/rancher/k3s/k3s.yaml
-      changed_when: true
+      register: app_apply
+      changed_when: "'created' in app_apply.stdout or 'configured' in app_apply.stdout"
 
     - name: Esperar a que todos los deployments estén disponibles
-      ansible.builtin.shell: |
-        kubectl wait deployments --all \
-          -n {{ app_namespace }} \
-          --for=condition=Available \
-          --timeout=300s
+      ansible.builtin.command:
+        argv:
+          - kubectl
+          - wait
+          - deployments
+          - --all
+          - -n
+          - "{{ app_namespace }}"
+          - --for=condition=Available
+          - --timeout=300s
       environment:
         KUBECONFIG: /etc/rancher/k3s/k3s.yaml
       changed_when: false

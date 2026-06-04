@@ -28,7 +28,7 @@ Tres VMs Ubuntu 22.04 LTS gestionadas con Vagrant + VirtualBox, conectadas en un
 | `worker1` | 192.168.56.11 | 2 | 1.5 GB | K3s Worker |
 | `worker2` | 192.168.56.12 | 2 | 1.5 GB | K3s Worker |
 
-El host del operador actúa como registry local de imágenes en `192.168.56.1:5000`.
+El host del operador actúa como registry local de imágenes en `192.168.56.1:5050`.
 
 La automatización corre con **Ansible** desde el host. K3s se instala en modo server en el CP y en modo agent en los workers.
 
@@ -66,8 +66,8 @@ La aplicación queda disponible en `http://192.168.56.10` una vez que todos los 
 ### 2. Verificar el estado del cluster
 
 ```bash
-kubectl --kubeconfig=~/.kube/config-the-store get nodes
-kubectl --kubeconfig=~/.kube/config-the-store get pods -n the-store
+kubectl --kubeconfig=ansible/k3s.yaml get nodes
+kubectl --kubeconfig=ansible/k3s.yaml get pods -n the-store
 ```
 
 ### 3. Escalar agregando un worker
@@ -136,8 +136,8 @@ the-store/
 │   ├── inventory/hosts.yml       # 3 nodos con IPs fijas
 │   ├── group_vars/all.yml        # variables globales (versión K3s, registry, etc.)
 │   ├── site.yml                  # orquestador principal
-│   ├── playbooks/                # 7 plays (prepare → cp → workers → registry → build → deploy → teardown)
-│   └── files/                    # config containerd para registry inseguro
+│   ├── playbooks/                # 7 plays (registry → build → prepare → cp → workers → deploy → teardown)
+│   └── templates/                # config containerd para registry inseguro
 ├── dist/kubernetes.yaml          # manifiestos K8s de los 5 microservicios
 ├── src/                          # código fuente de los microservicios (no modificar)
 ├── docs/                         # diagramas

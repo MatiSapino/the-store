@@ -1,7 +1,7 @@
 ---
 # Desinstala K3s de todos los nodos (fallback si no se usa "vagrant destroy").
 # Con Vagrant, el teardown completo es simplemente: vagrant destroy -f
-# Tareas a implementar:
+# Tareas principales:
 #   - workers: ejecutar /usr/local/bin/k3s-agent-uninstall.sh (si existe)
 #   - control_plane: ejecutar /usr/local/bin/k3s-uninstall.sh (si existe)
 - name: Teardown K3s en workers

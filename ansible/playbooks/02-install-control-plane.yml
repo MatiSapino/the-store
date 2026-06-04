@@ -6,19 +6,41 @@
   tasks:
 
     - name: Verificar si k3s.service ya está activo
-      ansible.builtin.shell: systemctl is-active k3s
+      ansible.builtin.command: systemctl is-active k3s
       register: k3s_active
       changed_when: false
       failed_when: false
 
+    - name: Detectar interfaz asociada a k3s_node_ip
+      ansible.builtin.command: ip -o -4 addr show to {{ k3s_node_ip }}
+      register: k3s_node_iface_query
+      when: k3s_node_iface is not defined
+      changed_when: false
+      failed_when: k3s_node_iface_query.stdout_lines | length == 0
+
+    - name: Guardar interfaz de red para K3s
+      ansible.builtin.set_fact:
+        k3s_node_iface: "{{ k3s_node_iface_query.stdout.split()[1] }}"
+      when: k3s_node_iface is not defined
+
+    - name: Descargar instalador K3s
+      ansible.builtin.get_url:
+        url: "{{ k3s_install_url }}"
+        dest: /tmp/install-k3s.sh
+        mode: '0755'
+        checksum: "{{ k3s_install_checksum | default(omit) }}"
+      when: k3s_active.stdout != 'active'
+
     - name: Instalar K3s en modo servidor
-      ansible.builtin.shell: >-
-        curl -sfL https://get.k3s.io | sh -s - server
-        --disable=traefik
-        --disable=servicelb
-        --node-ip={{ k3s_node_ip }}
-        --flannel-iface=enp0s8
-        --tls-san={{ k3s_node_ip }}
+      ansible.builtin.command:
+        argv:
+          - /tmp/install-k3s.sh
+          - server
+          - --disable=traefik
+          - --disable=servicelb
+          - "--node-ip={{ k3s_node_ip }}"
+          - "--flannel-iface={{ k3s_node_iface }}"
+          - "--tls-san={{ k3s_node_ip }}"
       environment:
         INSTALL_K3S_VERSION: "{{ k3s_version }}"
       when: k3s_active.stdout != 'active'
@@ -34,10 +56,12 @@
       ansible.builtin.slurp:
         src: /var/lib/rancher/k3s/server/node-token
       register: k3s_token_raw
+      no_log: true
 
     - name: Guardar token como fact del host
       ansible.builtin.set_fact:
         k3s_node_token: "{{ k3s_token_raw.content | b64decode | trim }}"
+      no_log: true
 
     - name: Copiar kubeconfig al host operador
       ansible.builtin.fetch:

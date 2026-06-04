@@ -1,9 +1,0 @@
-mirrors:
-  "192.168.56.1:5050":
-    endpoint:
-      - "http://192.168.56.1:5050"
-
-configs:
-  "192.168.56.1:5050":
-    tls:
-      insecure_skip_verify: true

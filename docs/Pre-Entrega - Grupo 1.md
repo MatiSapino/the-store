@@ -85,7 +85,8 @@ Puertos relevantes en esta red:
 | :---- | :---- | :---- | :---- |
 | 22 | TCP (SSH) | Host → todos los nodos | Ansible ejecuta todos los plays por SSH. |
 | 6443 | HTTPS | Workers → Control Plane | Workers se registran y comunican con la API de K3s. |
-| 5000 | HTTP | Workers → Host | Los workers hacen pull de imágenes al Registry Local. |
+| 5050 | HTTP | Workers → Host | Los workers hacen pull de imágenes al Registry Local. |
+| 80 | HTTP | Host → Control Plane | Punto de entrada HTTP publicado por nginx-ingress. |
 | 10250 | HTTPS | Control Plane → Workers | Kubelet API – el Control Plane consulta el estado de los workers. |
 
 ### 
@@ -94,7 +95,7 @@ Puertos relevantes en esta red:
 
 Red virtual interna gestionada automáticamente por Flannel, el plugin CNI incluido en K3s. Cada pod recibe una IP única dentro de este rango. Los pods de distintos nodos se comunican a través de un overlay VXLAN (UDP:8472) que Flannel crea sobre la red de gestión. Ansible configura el firewall para abrir este puerto entre workers.
 
-### Registry Local – 192.168.56.1:5000
+### Registry Local – 192.168.56.1:5050
 
 El manifiesto del repo usa imágenes locales no publicadas en ningún registry público. Para que los workers puedan hacer pull, se levanta un Docker Registry v2 en el host.
 
