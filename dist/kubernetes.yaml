@@ -101,7 +101,7 @@ spec:
             readOnlyRootFilesystem: true
             runAsNonRoot: true
             runAsUser: 1000
-          image: "192.168.56.1:5000/the-store-catalog:latest"
+          image: "192.168.56.1:5050/the-store-catalog:latest"
           imagePullPolicy: Always
           ports:
             - name: http
@@ -222,7 +222,7 @@ spec:
             readOnlyRootFilesystem: true
             runAsNonRoot: true
             runAsUser: 1000
-          image: "192.168.56.1:5000/the-store-cart:latest"
+          image: "192.168.56.1:5050/the-store-cart:latest"
           imagePullPolicy: Always
           ports:
             - name: http
@@ -361,7 +361,7 @@ spec:
             readOnlyRootFilesystem: true
             runAsNonRoot: true
             runAsUser: 1000
-          image: "192.168.56.1:5000/the-store-orders:latest"
+          image: "192.168.56.1:5050/the-store-orders:latest"
           imagePullPolicy: Always
           ports:
             - name: http
@@ -480,7 +480,7 @@ spec:
             readOnlyRootFilesystem: true
             runAsNonRoot: true
             runAsUser: 1000
-          image: "192.168.56.1:5000/the-store-checkout:latest"
+          image: "192.168.56.1:5050/the-store-checkout:latest"
           imagePullPolicy: Always
           ports:
             - name: http
@@ -618,7 +618,7 @@ spec:
             readOnlyRootFilesystem: true
             runAsNonRoot: true
             runAsUser: 1000
-          image: "192.168.56.1:5000/the-store-ui:latest"
+          image: "192.168.56.1:5050/the-store-ui:latest"
           imagePullPolicy: Always
           ports:
             - name: http
@@ -659,8 +659,7 @@ metadata:
     kubernetes.io/ingress.class: nginx
 spec:
   rules:
-    - host: "localhost"
-      http:
+    - http:
         paths:
           - path: /
             pathType: Prefix

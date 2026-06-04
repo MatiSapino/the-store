@@ -2,7 +2,8 @@
 k3s_version: "v1.31.4+k3s1"
 
 registry_host: "192.168.56.1"
-registry_port: 5000
+registry_local_host: "127.0.0.1"
+registry_port: 5050
 
 app_namespace: "the-store"
 image_tag: "latest"
