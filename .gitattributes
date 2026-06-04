@@ -1,0 +1,3 @@
+# Scripts ejecutados en Linux/Docker deben usar LF
+mvnw text eol=lf
+*.sh text eol=lf
