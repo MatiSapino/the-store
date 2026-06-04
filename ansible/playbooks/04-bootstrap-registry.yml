@@ -8,4 +8,30 @@
 - name: Bootstrap del Docker Registry local
   hosts: registry
   gather_facts: false
-  tasks: []
+  tasks:
+    - name: Verificar que Docker está corriendo
+      ansible.builtin.command: docker info
+      changed_when: false
+
+    - name: Verificar estado del container registry
+      ansible.builtin.shell: |
+        if docker ps -q -f name=^registry$ | grep -q .; then
+          echo "running"
+        elif docker ps -aq -f name=^registry$ | grep -q .; then
+          docker start registry
+          echo "started"
+        else
+          docker run -d --name registry --restart always -p {{ registry_port }}:5000 registry:2
+          echo "created"
+        fi
+      register: registry_result
+      changed_when: registry_result.stdout != 'running'
+
+    - name: Health-check del registry
+      ansible.builtin.uri:
+        url: "http://127.0.0.1:{{ registry_port }}/v2/"
+        status_code: 200
+      register: registry_health
+      retries: 5
+      delay: 3
+      until: registry_health.status == 200
