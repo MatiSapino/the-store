@@ -1,0 +1,32 @@
+# Lima VM config for K3s Control Plane
+# Usage: limactl start --name=cp lima/cp.yaml
+#
+# Networking: vmnet-shared — requires socket_vmnet (same as vagrant-qemu).
+# Run scripts/setup-mac.sh first.
+
+vmType: vz          # Apple Virtualization.framework (macOS 13+, faster than QEMU)
+os: Linux
+arch: aarch64
+
+images:
+  - location: "https://cloud-images.ubuntu.com/releases/22.04/release/ubuntu-22.04-server-cloudimg-arm64.img"
+    arch: aarch64
+
+cpus: 2
+memory: "2GiB"
+disk: "20GiB"
+
+
+# Give the default user passwordless sudo (matches Vagrant behaviour)
+provision:
+  - mode: system
+    script: |
+      #!/bin/bash
+      echo "$(whoami) ALL=(ALL) NOPASSWD:ALL" > /etc/sudoers.d/99-lima-nopasswd
+      chmod 440 /etc/sudoers.d/99-lima-nopasswd
+
+ssh:
+  localPort: 60010   # fixed so hosts-lima.yml ansible_port never needs manual editing
+
+# hostmounts are optional; not needed for this lab.
+mounts: []
