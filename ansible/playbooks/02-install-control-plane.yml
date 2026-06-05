@@ -42,6 +42,9 @@
           - "--node-ip={{ k3s_node_ip }}"
           - "--flannel-iface={{ k3s_node_iface }}"
           - "--tls-san={{ k3s_node_ip }}"
+          # Reserva el control plane para tareas de control: la app sólo se
+          # programa en los workers (los addons críticos toleran este taint).
+          - "--node-taint=CriticalAddonsOnly=true:NoSchedule"
       environment:
         INSTALL_K3S_VERSION: "{{ k3s_version }}"
       when: k3s_active.stdout != 'active'
