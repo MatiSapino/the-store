@@ -4,6 +4,7 @@
 #   1. Instalar nginx-ingress (baremetal manifest oficial v1.13.1)
 #      Patch: hostNetwork=true en el Deployment del controller
 #             nodeSelector: k3s_ingress_node_name
+#             toleration CriticalAddonsOnly (el CP está tainteado)
 #      Wait: pod ingress-nginx/controller Ready
 #   2. Crear namespace "the-store"
 #   3. Copiar dist/kubernetes.yaml al CP y aplicarlo:
@@ -60,7 +61,7 @@
           - ingress-nginx-controller
           - --type=merge
           - -p
-          - '{"spec":{"template":{"spec":{"hostNetwork":true,"dnsPolicy":"ClusterFirstWithHostNet","nodeSelector":{"kubernetes.io/hostname":"{{ k3s_ingress_node_name }}"}}}}}'
+          - '{"spec":{"template":{"spec":{"hostNetwork":true,"dnsPolicy":"ClusterFirstWithHostNet","nodeSelector":{"kubernetes.io/hostname":"{{ k3s_ingress_node_name }}"},"tolerations":[{"key":"CriticalAddonsOnly","operator":"Exists"}]}}}}'
       environment:
         KUBECONFIG: /etc/rancher/k3s/k3s.yaml
       register: ingress_patch
