@@ -38,6 +38,7 @@
           - server
           - --disable=traefik
           - --disable=servicelb
+          - "--node-name={{ inventory_hostname }}"
           - "--node-ip={{ k3s_node_ip }}"
           - "--flannel-iface={{ k3s_node_iface }}"
           - "--tls-san={{ k3s_node_ip }}"

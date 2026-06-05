@@ -49,6 +49,7 @@
           - /tmp/install-k3s.sh
           - agent
           - "--node-ip={{ k3s_node_ip }}"
+          - "--node-name={{ inventory_hostname }}"
           - "--flannel-iface={{ k3s_node_iface }}"
       environment:
         INSTALL_K3S_VERSION: "{{ k3s_version }}"
