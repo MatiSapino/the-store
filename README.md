@@ -113,6 +113,34 @@ make down && make up && make deploy
 
 (Windows + WSL2: `vagrant destroy -f && vagrant up` desde PowerShell, después `bash scripts/ansible-wsl.sh` desde WSL.)
 
+## Demo visual (opcional)
+
+Para presentaciones donde no se quieren mostrar comandos, hay dos dashboards opcionales que se despliegan con un solo comando:
+
+```bash
+make dashboard
+```
+
+Esto corre `ansible/playbooks/07-deploy-dashboards.yml`, que crea el namespace `dashboards` y deja corriendo dos cosas en el control plane (con la misma `toleration` que el ingress):
+
+| Herramienta | URL | Para qué sirve |
+|---|---|---|
+| [kube-ops-view](https://codeberg.org/hjacobs/kube-ops-view) | `http://192.168.56.10:30090/` | Nodos como hexágonos, pods como cuadraditos animados. Ideal para mostrar **Casos 3 y 4** (escalado y teardown) en vivo. |
+| [Headlamp](https://headlamp.dev/) | `http://192.168.56.10:30091/` | UI moderna tipo SaaS. Ideal para mostrar la **estructura del Caso 2**: árbol de workloads, services, ingress. Requiere un token que imprime el playbook al terminar. |
+
+El playbook imprime al final:
+- las URLs exactas según `k3s_node_ip` de tu inventario,
+- el token de Headlamp (un JWT largo — copiarlo entero).
+
+Para bajarlos: `make dashboard-down` (borra el namespace `dashboards`).
+
+**Sugerencia de demo de 5 min**:
+1. Headlamp abierto: mostrar los 5 microservicios desplegados y sus services.
+2. Browser en `http://192.168.56.10`: la app real funcionando.
+3. kube-ops-view en pantalla principal: `kubectl delete pod -n the-store -l app.kubernetes.io/name=ui` → ver el cuadradito desaparecer y reaparecer.
+4. `make scale` → ver aparecer el nuevo hexágono de worker3 en kube-ops-view.
+5. `make down && make up && make deploy` (Caso 4) → cluster completo cae y vuelve.
+
 ## Casos de uso del TP
 
 | # | Caso | Comando principal | Validación |
@@ -155,6 +183,7 @@ the-store/
 │   ├── playbooks/                # registry → build → prepare → cp → workers → deploy (+ teardown)
 │   └── templates/                # config containerd para registry inseguro
 ├── lima/                         # configs de Lima por VM (cp / worker1-3)
+├── ansible/templates/            # registries.yaml, kube-ops-view.yaml.j2, headlamp.yaml.j2
 ├── dist/kubernetes.yaml          # manifiestos K8s de los 5 microservicios
 ├── src/                          # código fuente de los microservicios (no modificar)
 ├── scripts/                      # setup por SO, wrappers de ansible, lima-up, scale
