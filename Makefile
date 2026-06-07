@@ -32,6 +32,7 @@ APP_NAMESPACE := the-store
 SERVICES      := catalog cart orders checkout ui
 
 .PHONY: help up down deploy status teardown clean collections check scale \
+        dashboard dashboard-down \
         play-01 play-02 play-03 play-04 play-05 play-06
 
 help:
@@ -42,6 +43,8 @@ help:
 	@echo "  deploy      Run full Ansible site.yml against running VMs"
 	@echo "  status      Show cluster node and pod status"
 	@echo "  scale       Levantar worker3 y unirlo al cluster (caso 3)"
+	@echo "  dashboard   Deployar kube-ops-view + Headlamp para la demo visual (opcional)"
+	@echo "  dashboard-down  Borrar el namespace de dashboards"
 	@echo "  teardown    Uninstall K3s from VMs (keeps VMs running)"
 	@echo "  clean       Stop local Docker registry container"
 	@echo "  collections Install required Ansible collections"
@@ -143,6 +146,12 @@ status:
 
 scale:
 	bash scripts/scale.sh
+
+dashboard:
+	bash $(ANSIBLE_SCRIPT) ansible/playbooks/07-deploy-dashboards.yml
+
+dashboard-down:
+	KUBECONFIG=$(KUBECONFIG) kubectl delete namespace dashboards --ignore-not-found
 
 teardown:
 	bash $(ANSIBLE_SCRIPT) ansible/playbooks/99-teardown.yml
