@@ -23,6 +23,26 @@ fi
 
 echo "=== Platform: $UNAME_S/$UNAME_M -> provider=$PROVIDER inventory=$INVENTORY ==="
 
+case "$PROVIDER" in
+  vagrant)
+    if ! command -v vagrant >/dev/null 2>&1; then
+      echo "ERROR: vagrant no esta instalado. Corre 'bash scripts/setup-linux.sh' (o el setup-* de tu SO) primero." >&2
+      exit 1
+    fi
+    ;;
+  lima)
+    if ! command -v limactl >/dev/null 2>&1; then
+      echo "ERROR: limactl no esta instalado. Corre 'bash scripts/setup-mac.sh' y eligi opcion B." >&2
+      exit 1
+    fi
+    ;;
+esac
+
+if ! command -v ansible-playbook >/dev/null 2>&1; then
+  echo "ERROR: ansible no esta instalado. Corre 'bash scripts/setup-linux.sh' (o el setup-* de tu SO)." >&2
+  exit 1
+fi
+
 uncomment_scale() {
   local file="$1"
   if grep -q '^[[:space:]]*#scale# ' "$file"; then
