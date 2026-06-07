@@ -34,11 +34,11 @@ fi
 
 key_file="$HOME/.vagrant.d/insecure_private_keys/vagrant.key.rsa"
 if [[ ! -f "$key_file" ]]; then
-  echo "ERROR: Vagrant insecure key not found at $key_file" >&2
-  echo "Run 'vagrant up' at least once so Vagrant downloads the key." >&2
-  exit 1
+  echo "WARN: Vagrant insecure key no encontrada en $key_file" >&2
+  echo "      Si el playbook hace SSH a las VMs va a fallar. Levantar las VMs con 'vagrant up' al menos una vez." >&2
+else
+  chmod 600 "$HOME/.vagrant.d/insecure_private_keys/"*
 fi
-chmod 600 "$HOME/.vagrant.d/insecure_private_keys/"*
 
 # Clean up stale host keys for localhost ports used by the QEMU VMs
 for port in 50010 50011 50012; do
