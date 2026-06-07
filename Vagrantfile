@@ -16,8 +16,7 @@ Vagrant.configure("2") do |config|
     { name: "cp",      ip: "192.168.56.10", cpus: 2, memory: 2048, ssh_port: 50010 },
     { name: "worker1", ip: "192.168.56.11", cpus: 2, memory: 1536, ssh_port: 50011 },
     { name: "worker2", ip: "192.168.56.12", cpus: 2, memory: 1536, ssh_port: 50012 },
-    # Uncomment to add a fourth node for the horizontal-scaling use case:
-    # { name: "worker3", ip: "192.168.56.13", cpus: 2, memory: 1536, ssh_port: 50013 },
+    #scale# { name: "worker3", ip: "192.168.56.13", cpus: 2, memory: 1536, ssh_port: 50013 },
   ]
 
   nodes.each do |node|
