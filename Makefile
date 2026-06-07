@@ -155,10 +155,11 @@ collections:
 
 check:
 	@echo "=== Checking prerequisites ==="
-	@command -v limactl     >/dev/null && echo "limactl:    OK ($(shell limactl --version))" || echo "limactl:    MISSING — brew install lima"
-	@command -v ansible     >/dev/null && echo "ansible:    OK ($(shell ansible --version | head -1))" || echo "ansible:    MISSING"
-	@command -v docker      >/dev/null && echo "docker:     OK ($(shell docker --version))" || echo "docker:     MISSING"
-	@command -v kubectl     >/dev/null && echo "kubectl:    OK ($(shell kubectl version --client --short 2>/dev/null || kubectl version --client))" || echo "kubectl:    not installed (optional)"
+	@if command -v ansible >/dev/null; then echo "ansible:    OK ($$(ansible --version | head -1))"; else echo "ansible:    MISSING"; fi
+	@if command -v docker  >/dev/null; then echo "docker:     OK ($$(docker --version))"; else echo "docker:     MISSING"; fi
+	@if command -v vagrant >/dev/null; then echo "vagrant:    OK ($$(vagrant --version))"; else echo "vagrant:    MISSING (necesario salvo macOS arm64 con Lima)"; fi
+	@if command -v kubectl >/dev/null; then echo "kubectl:    OK ($$(kubectl version --client 2>/dev/null | head -1))"; else echo "kubectl:    not installed (opcional, solo para verificar el cluster)"; fi
+	@if command -v limactl >/dev/null; then echo "limactl:    OK ($$(limactl --version))"; else echo "limactl:    not installed (solo macOS arm64 con Lima)"; fi
 	@echo ""
 	@echo "=== Lima VMs ==="
-	@limactl list 2>/dev/null || echo "(no Lima VMs yet)"
+	@command -v limactl >/dev/null && limactl list 2>/dev/null || echo "(no Lima VMs)"
