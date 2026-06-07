@@ -73,14 +73,10 @@ kubectl --kubeconfig=ansible/k3s.yaml get pods -n the-store
 ### 3. Escalar agregando un worker
 
 ```bash
-# 1. Descomentar worker3 en Vagrantfile y en ansible/inventory/hosts.yml
-# 2. PowerShell: levantar la nueva VM
-vagrant up worker3
-
-# 3. WSL: preparar el nodo y unirlo al cluster
-bash scripts/ansible-wsl.sh ansible/playbooks/01-prepare-nodes.yml --limit worker3
-bash scripts/ansible-wsl.sh ansible/playbooks/03-join-workers.yml  --limit worker3
+make scale
 ```
+
+El target corre `scripts/scale.sh`, que destapa el bloque `#scale#` de worker3 en `Vagrantfile` y en el inventario que corresponda a la plataforma, levanta la VM (vagrant o lima) y ejecuta los plays `01-prepare-nodes` y `03-join-workers` con `--limit worker3`. Al final verifica con `kubectl get node worker3` que el nodo aparezca `Ready`.
 
 ### 4. Teardown completo
 
@@ -106,7 +102,7 @@ bash scripts/ansible-wsl.sh
 |---|------|-------------------|------------|
 | 1 | Crear cluster desde VMs limpias | `vagrant up` en PowerShell + `bash scripts/ansible-wsl.sh` en WSL | `kubectl get nodes` → 3 nodos Ready |
 | 2 | Desplegar The Store | Incluido en `site.yml` (play 06) | `curl http://192.168.56.10` → UI responde |
-| 3 | Escalado horizontal | `vagrant up worker3` + `scripts/ansible-wsl.sh` con plays 01 y 03 sobre `worker3` | `kubectl get nodes` → 4 nodos Ready |
+| 3 | Escalado horizontal | `make scale` | `kubectl get nodes` → 4 nodos Ready |
 | 4 | Teardown y redespliegue | `vagrant destroy -f`, `vagrant up` y `bash scripts/ansible-wsl.sh` | Cluster funcional en < 10 min |
 
 ## Tests
