@@ -40,28 +40,49 @@ La automatización corre con **Ansible** desde el host. K3s se instala en modo s
 - [Docker](https://docs.docker.com/get-docker/) (para el registry local y build de imágenes)
 - [kubectl](https://kubernetes.io/docs/tasks/tools/install-kubectl/)
 
+Los scripts en `scripts/setup-*` instalan todo lo de arriba según el SO. Después de correrlos:
+
+```bash
+make check
+```
+
+## Setup por plataforma
+
+Cada SO tiene un script de bootstrap y un wrapper de `ansible-playbook` que ya conoce el inventario correcto. El `Makefile` auto-detecta el sistema y elige el wrapper, así que en la mayoría de los casos alcanza con `make up && make deploy`.
+
+| Plataforma | Bootstrap | VMs | Wrapper Ansible + inventario |
+|---|---|---|---|
+| Linux nativo | `bash scripts/setup-linux.sh` | `vagrant up` (libvirt o VirtualBox) | `scripts/ansible-wsl.sh` + `hosts.yml` |
+| Windows + WSL2 | PowerShell: `scripts/setup-windows.ps1`<br>WSL: `bash scripts/setup-linux.sh` | `vagrant up` desde PowerShell | `scripts/ansible-wsl.sh` desde WSL + `hosts.yml` |
+| macOS Intel | `bash scripts/setup-mac.sh` | `vagrant up` (VirtualBox) | `scripts/ansible-mac.sh` + `hosts-qemu.yml` |
+| macOS Apple Silicon — Opción A (vagrant-qemu) | `bash scripts/setup-mac.sh` → A | `vagrant up` (qemu) | `scripts/ansible-mac.sh` + `hosts-qemu.yml` |
+| macOS Apple Silicon — Opción B (Lima) | `bash scripts/setup-mac.sh` → B | `bash scripts/lima-up.sh` | `scripts/ansible-lima.sh` + `hosts-lima.yml` |
+
 ## Uso
 
 ### 1. Crear el cluster y desplegar la aplicación
 
-En Windows se recomienda separar responsabilidades:
-
-- Ejecutar **Vagrant/VirtualBox desde PowerShell**, porque las VMs viven en el host Windows.
-- Ejecutar **Ansible desde WSL**, usando inventario explícito. Si el repo está bajo `/mnt/c`, Ansible puede ignorar `ansible/ansible.cfg` por permisos world-writable del filesystem de Windows.
-
 ```bash
-# PowerShell, desde C:\Users\EMINE\Documents\GitHub\the-store
+make up && make deploy
+```
+
+`make up` invoca el provider que detectó el Makefile (vagrant, vagrant-qemu o lima). `make deploy` corre el `site.yml` completo: registry local, build y push de las 5 imágenes, preparación de nodos, instalación del CP, unión de los workers y despliegue de The Store.
+
+La aplicación queda en `http://192.168.56.10` una vez que todos los pods estén en `Running`.
+
+**Windows + WSL2**: hay que separar responsabilidades porque las VMs viven en el host Windows.
+
+```powershell
+# PowerShell, desde la carpeta del repo
 vagrant up
 ```
 
 ```bash
-# WSL, desde /mnt/c/Users/EMINE/Documents/GitHub/the-store
+# WSL, desde la misma carpeta
 bash scripts/ansible-wsl.sh
 ```
 
-El script copia la clave insegura de Vagrant al home de WSL si hace falta, limpia las host keys de `192.168.56.10-12` y ejecuta el playbook con `ANSIBLE_HOST_KEY_CHECKING=False` e inventario explícito.
-
-La aplicación queda disponible en `http://192.168.56.10` una vez que todos los pods estén en `Running`.
+El wrapper de WSL copia la clave insegura de Vagrant al home de WSL si hace falta, limpia las host keys de `192.168.56.10-12` y corre el playbook con `ANSIBLE_HOST_KEY_CHECKING=False` e inventario explícito.
 
 ### 2. Verificar el estado del cluster
 
@@ -81,29 +102,25 @@ El target corre `scripts/scale.sh`, que destapa el bloque `#scale#` de worker3 e
 ### 4. Teardown completo
 
 ```bash
-# Destruir todas las VMs (el cluster desaparece con ellas)
-vagrant destroy -f
+make down
 ```
 
 ### Reconstruir desde cero
 
 ```bash
-# PowerShell
-vagrant destroy -f
-vagrant up
-
-# WSL
-bash scripts/ansible-wsl.sh
+make down && make up && make deploy
 ```
+
+(Windows + WSL2: `vagrant destroy -f && vagrant up` desde PowerShell, después `bash scripts/ansible-wsl.sh` desde WSL.)
 
 ## Casos de uso del TP
 
 | # | Caso | Comando principal | Validación |
 |---|------|-------------------|------------|
-| 1 | Crear cluster desde VMs limpias | `vagrant up` en PowerShell + `bash scripts/ansible-wsl.sh` en WSL | `kubectl get nodes` → 3 nodos Ready |
-| 2 | Desplegar The Store | Incluido en `site.yml` (play 06) | `curl http://192.168.56.10` → UI responde |
+| 1 | Crear cluster desde VMs limpias | `make up && make deploy` | `kubectl get nodes` → 3 nodos Ready |
+| 2 | Desplegar The Store | Incluido en `make deploy` (play 06) | `curl http://192.168.56.10` → UI responde |
 | 3 | Escalado horizontal | `make scale` | `kubectl get nodes` → 4 nodos Ready |
-| 4 | Teardown y redespliegue | `vagrant destroy -f`, `vagrant up` y `bash scripts/ansible-wsl.sh` | Cluster funcional en < 10 min |
+| 4 | Teardown y redespliegue | `make down && make up && make deploy` | Cluster funcional en < 10 min |
 
 ## Tests
 
@@ -129,14 +146,20 @@ bash src/load-generator/scripts/run-docker.sh -n host -t 'http://192.168.56.10' 
 the-store/
 ├── ansible/
 │   ├── ansible.cfg
-│   ├── inventory/hosts.yml       # 3 nodos con IPs fijas
+│   ├── inventory/
+│   │   ├── hosts.yml             # Vagrant + VirtualBox/libvirt (Linux/WSL)
+│   │   ├── hosts-qemu.yml        # macOS (vagrant-qemu)
+│   │   └── hosts-lima.yml        # macOS Apple Silicon (Lima)
 │   ├── group_vars/all.yml        # variables globales (versión K3s, registry, etc.)
 │   ├── site.yml                  # orquestador principal
-│   ├── playbooks/                # 7 plays (registry → build → prepare → cp → workers → deploy → teardown)
+│   ├── playbooks/                # registry → build → prepare → cp → workers → deploy (+ teardown)
 │   └── templates/                # config containerd para registry inseguro
+├── lima/                         # configs de Lima por VM (cp / worker1-3)
 ├── dist/kubernetes.yaml          # manifiestos K8s de los 5 microservicios
 ├── src/                          # código fuente de los microservicios (no modificar)
-├── docs/                         # diagramas
+├── scripts/                      # setup por SO, wrappers de ansible, lima-up, scale
+├── docs/                         # documentación de la pre-entrega
 ├── samples/                      # datos de demo
-└── Vagrantfile                   # define las 3 VMs
+├── Makefile                      # auto-detecta plataforma → up / deploy / scale / down
+└── Vagrantfile                   # define las 3 VMs (+ worker3 opcional)
 ```
