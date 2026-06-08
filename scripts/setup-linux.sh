@@ -21,6 +21,26 @@ else
   echo "=== Native Linux detected ==="
 fi
 
+# ── Pre-flight checks (Linux nativo) ───────────────────────────────────────────
+if [[ "$IS_WSL" == "false" ]]; then
+  # BIND9 / named escuchando en :53 sobre cualquier interfaz (no solo el stub de
+  # systemd-resolved). Si está, vagrant-libvirt no puede arrancar su dnsmasq
+  # cuando aparece virbr1 con 192.168.121.1 → falla con "Address already in use".
+  if command -v ss >/dev/null 2>&1 && \
+     sudo ss -lntup 2>/dev/null | grep -E '\bnamed\b.*:53\b' >/dev/null; then
+    warn "BIND9 (named) esta escuchando en :53. Va a chocar con vagrant-libvirt."
+    warn "Solucion temporal: sudo systemctl stop bind9   (o named)"
+    warn "Restaurar despues con: sudo systemctl start bind9"
+  fi
+
+  # vboxnet0 viejo con 192.168.56.0/24 ocupado choca con la red privada de
+  # libvirt 'the-store0' que usa la misma subred.
+  if ip -br a 2>/dev/null | grep -E '^vboxnet0\b.*192\.168\.56\.' >/dev/null; then
+    warn "vboxnet0 tiene 192.168.56.x asignado. Va a chocar con la red de libvirt."
+    warn "Solucion: sudo ip link set vboxnet0 down"
+  fi
+fi
+
 # ── System packages ────────────────────────────────────────────────────────────
 info "Updating apt..."
 sudo apt-get update -qq
