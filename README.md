@@ -20,7 +20,7 @@ Todos los servicios usan persistencia en memoria.
 
 ## Infraestructura
 
-Tres VMs Ubuntu 22.04 LTS gestionadas con Vagrant + VirtualBox, conectadas en una red host-only `192.168.56.0/24`:
+Tres VMs Ubuntu 22.04 LTS (box `generic/ubuntu2204`) gestionadas con Vagrant, conectadas en una red privada `192.168.56.0/24`. El backend de virtualización depende del SO: libvirt+KVM en Linux nativo (recomendado), VirtualBox en macOS Intel y WSL2, vagrant-qemu o Lima en macOS Apple Silicon.
 
 | Hostname | IP | CPU | RAM | Rol |
 |----------|----|-----|-----|-----|
@@ -35,7 +35,11 @@ La automatización corre con **Ansible** desde el host. K3s se instala en modo s
 ## Requisitos previos
 
 - [Vagrant 2.4+](https://developer.hashicorp.com/vagrant/install)
-- [VirtualBox 7+](https://www.virtualbox.org/wiki/Downloads)
+- Un backend de virtualización según el SO:
+  - Linux nativo: libvirt + KVM (recomendado) o VirtualBox 7+
+  - macOS Intel / WSL2: [VirtualBox 7+](https://www.virtualbox.org/wiki/Downloads)
+  - macOS Apple Silicon: vagrant-qemu o [Lima](https://lima-vm.io/)
+- CPU con virtualización por hardware habilitada en BIOS (Intel VT-x o AMD-V)
 - [Ansible 2.16+](https://docs.ansible.com/ansible/latest/installation_guide/index.html)
 - [Docker](https://docs.docker.com/get-docker/) (para el registry local y build de imágenes)
 - [kubectl](https://kubernetes.io/docs/tasks/tools/install-kubectl/)
@@ -45,6 +49,8 @@ Los scripts en `scripts/setup-*` instalan todo lo de arriba según el SO. Despu�
 ```bash
 make check
 ```
+
+En Linux nativo, `scripts/setup-linux.sh` avisa antes de instalar si detecta dos conflictos comunes: BIND9 (`named`) escuchando en el puerto 53, o una interfaz `vboxnet0` huérfana con la subred `192.168.56.0/24`. Los dos chocan con las redes que crea vagrant-libvirt.
 
 ## Setup por plataforma
 
