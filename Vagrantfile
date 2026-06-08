@@ -2,7 +2,7 @@ Vagrant.configure("2") do |config|
   # Detect macOS Apple Silicon to choose provider and box automatically
   is_arm_mac = RUBY_PLATFORM.match?(/arm64.*darwin|darwin.*arm64/)
 
-  config.vm.box = is_arm_mac ? "perk/ubuntu-2204-arm64" : "bento/ubuntu-22.04"
+  config.vm.box = is_arm_mac ? "perk/ubuntu-2204-arm64" : "generic/ubuntu2204"
   config.vm.box_check_update = false
 
   # Boxes can take longer than 5 min to expose SSH when booting several VMs
@@ -45,8 +45,11 @@ Vagrant.configure("2") do |config|
         end
 
         vm.vm.provider "libvirt" do |lv|
+          lv.driver = "kvm"
+          lv.cpu_mode = "host-passthrough"
           lv.cpus   = node[:cpus]
           lv.memory = node[:memory]
+          lv.tpm_path = nil
         end
       end
     end
