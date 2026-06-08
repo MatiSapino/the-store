@@ -50,6 +50,24 @@
       until: ingress_deploy.rc == 0
       changed_when: false
 
+    - name: Escribir patch JSON para ingress-nginx-controller
+      ansible.builtin.copy:
+        dest: /tmp/ingress-nginx-patch.json
+        mode: '0644'
+        content: "{{ ingress_patch_spec | to_json }}"
+      vars:
+        ingress_patch_spec:
+          spec:
+            template:
+              spec:
+                hostNetwork: true
+                dnsPolicy: ClusterFirstWithHostNet
+                nodeSelector:
+                  kubernetes.io/hostname: "{{ k3s_ingress_node_name }}"
+                tolerations:
+                  - key: CriticalAddonsOnly
+                    operator: Exists
+
     - name: Parchear ingress-nginx-controller para exponer HTTP en el Control Plane
       ansible.builtin.command:
         argv:
@@ -60,8 +78,7 @@
           - deployment
           - ingress-nginx-controller
           - --type=merge
-          - -p
-          - '{"spec":{"template":{"spec":{"hostNetwork":true,"dnsPolicy":"ClusterFirstWithHostNet","nodeSelector":{"kubernetes.io/hostname":"{{ k3s_ingress_node_name }}"},"tolerations":[{"key":"CriticalAddonsOnly","operator":"Exists"}]}}}}'
+          - --patch-file=/tmp/ingress-nginx-patch.json
       environment:
         KUBECONFIG: /etc/rancher/k3s/k3s.yaml
       register: ingress_patch
