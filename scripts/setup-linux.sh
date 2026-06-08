@@ -100,7 +100,15 @@ if [[ "$IS_WSL" == "false" ]]; then
       sudo apt-get install -y ruby-dev libvirt-dev
       vagrant plugin install vagrant-libvirt
     fi
-    ok "libvirt backend ready. Use: vagrant up --provider libvirt"
+    ok "libvirt backend ready."
+
+    if ! grep -q 'VAGRANT_DEFAULT_PROVIDER=libvirt' "$HOME/.bashrc" 2>/dev/null; then
+      echo 'export VAGRANT_DEFAULT_PROVIDER=libvirt' >> "$HOME/.bashrc"
+      ok "Agregado 'export VAGRANT_DEFAULT_PROVIDER=libvirt' a ~/.bashrc"
+      warn "Hace 'source ~/.bashrc' o abri una shell nueva antes de 'make up'"
+    else
+      ok "VAGRANT_DEFAULT_PROVIDER=libvirt ya estaba en ~/.bashrc"
+    fi
 
   else
     info "Installing VirtualBox..."
