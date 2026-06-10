@@ -21,11 +21,11 @@ start_vm() {
 
 get_ip() {
   local name="$1"
-  # Lima management network (192.168.104.x) is the only network — use it directly.
-  # VMs on this subnet can communicate with each other; host is at 192.168.104.2.
-  limactl shell "$name" ip -4 addr 2>/dev/null \
-    | grep -oE '([0-9]{1,3}\.){3}[0-9]{1,3}' \
-    | grep -v '^127\.' \
+  # lima0 is the socket_vmnet shared interface — unique IP per VM, reachable by all nodes.
+  # eth0 is vzNAT (same IP on every VM, isolated), so we must not use it.
+  limactl shell "$name" ip -4 addr show lima0 2>/dev/null \
+    | grep -oE 'inet ([0-9]{1,3}\.){3}[0-9]{1,3}' \
+    | awk '{print $2}' \
     | head -1 || true
 }
 
@@ -68,9 +68,10 @@ for vm_name in cp worker1 worker2; do
   echo "[OK]  $vm_name -> $ip_val"
 done
 
-# host.lima.internal always resolves to the host's IP on the Lima management network
-GW="$(limactl shell cp getent hosts host.lima.internal 2>/dev/null | awk '{print $1}' || echo '')"
-[[ -z "$GW" ]] && GW="192.168.104.2"  # fallback for Lima's default management subnet
+# The host is reachable at the socket_vmnet gateway IP (lima0 default route).
+# This is the only address that is reachable from ALL VMs (vzNAT is per-VM isolated).
+GW="$(limactl shell cp ip -4 route show dev lima0 2>/dev/null | awk '/default/{print $3}' | head -1 || echo '')"
+[[ -z "$GW" ]] && GW="192.168.56.1"  # fallback: socket_vmnet shared gateway
 echo "[OK]  host (registry_host) -> $GW"
 
 echo ""
