@@ -20,7 +20,7 @@ Todos los servicios usan persistencia en memoria.
 
 ## Infraestructura
 
-Tres VMs Ubuntu 22.04 LTS (box `generic/ubuntu2204`) gestionadas con Vagrant, conectadas en una red privada `192.168.56.0/24`. El backend de virtualización depende del SO: libvirt+KVM en Linux nativo (recomendado), VirtualBox en macOS Intel y WSL2, vagrant-qemu o Lima en macOS Apple Silicon.
+Tres VMs Ubuntu 22.04 LTS gestionadas con Vagrant en Linux/WSL2 o Lima en macOS Apple Silicon. El backend de virtualización depende del SO: libvirt+KVM en Linux nativo (recomendado), VirtualBox en WSL2 y Lima en macOS Apple Silicon.
 
 | Hostname | IP | CPU | RAM | Rol |
 |----------|----|-----|-----|-----|
@@ -34,11 +34,12 @@ La automatización corre con **Ansible** desde el host. K3s se instala en modo s
 
 ## Requisitos previos
 
-- [Vagrant 2.4+](https://developer.hashicorp.com/vagrant/install)
+- [Vagrant 2.4+](https://developer.hashicorp.com/vagrant/install) (Linux nativo y Windows + WSL2)
+- [Lima](https://lima-vm.io/) (macOS Apple Silicon)
 - Un backend de virtualización según el SO:
   - Linux nativo: libvirt + KVM (recomendado) o VirtualBox 7+
-  - macOS Intel / WSL2: [VirtualBox 7+](https://www.virtualbox.org/wiki/Downloads)
-  - macOS Apple Silicon: vagrant-qemu o [Lima](https://lima-vm.io/)
+  - Windows + WSL2: [VirtualBox 7+](https://www.virtualbox.org/wiki/Downloads)
+  - macOS Apple Silicon: Lima con socket_vmnet (lo configura `scripts/setup-mac.sh`)
 - CPU con virtualización por hardware habilitada en BIOS (Intel VT-x o AMD-V)
 - [Ansible 2.16+](https://docs.ansible.com/ansible/latest/installation_guide/index.html)
 - [Docker](https://docs.docker.com/get-docker/) (para el registry local y build de imágenes)
@@ -60,9 +61,7 @@ Cada SO tiene un script de bootstrap y un wrapper de `ansible-playbook` que ya c
 |---|---|---|---|
 | Linux nativo | `bash scripts/setup-linux.sh` | `vagrant up` (libvirt o VirtualBox) | `scripts/ansible-wsl.sh` + `hosts.yml` |
 | Windows + WSL2 | PowerShell: `scripts/setup-windows.ps1`<br>WSL: `bash scripts/setup-linux.sh` | `vagrant up` desde PowerShell | `scripts/ansible-wsl.sh` desde WSL + `hosts.yml` |
-| macOS Intel | `bash scripts/setup-mac.sh` | `vagrant up` (VirtualBox) | `scripts/ansible-mac.sh` + `hosts-qemu.yml` |
-| macOS Apple Silicon — Opción A (vagrant-qemu) | `bash scripts/setup-mac.sh` → A | `vagrant up` (qemu) | `scripts/ansible-mac.sh` + `hosts-qemu.yml` |
-| macOS Apple Silicon — Opción B (Lima) | `bash scripts/setup-mac.sh` → B | `bash scripts/lima-up.sh` | `scripts/ansible-lima.sh` + `hosts-lima.yml` |
+| macOS Apple Silicon | `bash scripts/setup-mac.sh` | `bash scripts/lima-up.sh` | `scripts/ansible-lima.sh` + `hosts-lima.yml` |
 
 ## Uso
 
@@ -72,9 +71,9 @@ Cada SO tiene un script de bootstrap y un wrapper de `ansible-playbook` que ya c
 make up && make deploy
 ```
 
-`make up` invoca el provider que detectó el Makefile (vagrant, vagrant-qemu o lima). `make deploy` corre el `site.yml` completo: registry local, build y push de las 5 imágenes, preparación de nodos, instalación del CP, unión de los workers y despliegue de The Store.
+`make up` invoca el provider que detectó el Makefile (Vagrant en Linux/WSL2 o Lima en macOS Apple Silicon). `make deploy` corre el `site.yml` completo: registry local, build y push de las 5 imágenes, preparación de nodos, instalación del CP, unión de los workers y despliegue de The Store.
 
-La aplicación queda en `http://192.168.56.10` una vez que todos los pods estén en `Running`.
+La aplicación queda en `http://192.168.56.10` en Linux/WSL2. En macOS con Lima, usá la IP de `cp` que `scripts/lima-up.sh` escribe en `ansible/inventory/hosts-lima.yml`.
 
 **Windows + WSL2**: hay que separar responsabilidades porque las VMs viven en el host Windows.
 
@@ -103,7 +102,7 @@ kubectl --kubeconfig=ansible/k3s.yaml get pods -n the-store
 make scale
 ```
 
-El target corre `scripts/scale.sh`, que destapa el bloque `#scale#` de worker3 en `Vagrantfile` y en el inventario que corresponda a la plataforma, levanta la VM (vagrant o lima) y ejecuta los plays `01-prepare-nodes` y `03-join-workers` con `--limit worker3`. Al final verifica con `kubectl get node worker3` que el nodo aparezca `Ready`.
+El target corre `scripts/scale.sh`, que destapa el bloque `#scale#` de worker3 en los archivos que correspondan a la plataforma, levanta la VM (Vagrant o Lima) y ejecuta los plays `01-prepare-nodes` y `03-join-workers` con `--limit worker3`. Al final verifica con `kubectl get node worker3` que el nodo aparezca `Ready`.
 
 ### 4. Teardown completo
 
@@ -182,7 +181,6 @@ the-store/
 │   ├── ansible.cfg
 │   ├── inventory/
 │   │   ├── hosts.yml             # Vagrant + VirtualBox/libvirt (Linux/WSL)
-│   │   ├── hosts-qemu.yml        # macOS (vagrant-qemu)
 │   │   └── hosts-lima.yml        # macOS Apple Silicon (Lima)
 │   ├── group_vars/all.yml        # variables globales (versión K3s, registry, etc.)
 │   ├── site.yml                  # orquestador principal

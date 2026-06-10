@@ -61,7 +61,7 @@
 
     - name: Verificar que el nodo aparece como Ready en kubectl get nodes
       ansible.builtin.shell: >-
-        kubectl get node {{ k3s_node_name | default(inventory_hostname) }} --no-headers 2>/dev/null
+        kubectl get node {{ inventory_hostname }} --no-headers 2>/dev/null
       environment:
         KUBECONFIG: /etc/rancher/k3s/k3s.yaml
       register: node_status

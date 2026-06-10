@@ -2,7 +2,10 @@
 k3s_version: "v1.31.4+k3s1"
 k3s_install_url: "https://get.k3s.io"
 k3s_control_plane_host: "{{ groups['control_plane'][0] }}"
-k3s_ingress_node_name: "{{ hostvars[k3s_control_plane_host].k3s_node_name | default(k3s_control_plane_host) }}"
+# El CP se registra con --node-name={{ inventory_hostname }}, que coincide con
+# k3s_control_plane_host (groups['control_plane'][0]). Lo usan los nodeSelector
+# de ingress y dashboards.
+k3s_ingress_node_name: "{{ k3s_control_plane_host }}"
 
 registry_host: "192.168.56.1"
 registry_local_host: "127.0.0.1"

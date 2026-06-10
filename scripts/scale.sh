@@ -5,23 +5,18 @@ REPO_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 cd "$REPO_ROOT"
 
 UNAME_S="$(uname -s)"
-UNAME_M="$(uname -m)"
 
-if [[ "$UNAME_S" == "Darwin" && "$UNAME_M" == "arm64" ]]; then
+if [[ "$UNAME_S" == "Darwin" ]]; then
   PROVIDER="lima"
   ANSIBLE_SCRIPT="scripts/ansible-lima.sh"
   INVENTORY="ansible/inventory/hosts-lima.yml"
-elif [[ "$UNAME_S" == "Darwin" ]]; then
-  PROVIDER="vagrant"
-  ANSIBLE_SCRIPT="scripts/ansible-mac.sh"
-  INVENTORY="ansible/inventory/hosts-qemu.yml"
 else
   PROVIDER="vagrant"
   ANSIBLE_SCRIPT="scripts/ansible-wsl.sh"
   INVENTORY="ansible/inventory/hosts.yml"
 fi
 
-echo "=== Platform: $UNAME_S/$UNAME_M -> provider=$PROVIDER inventory=$INVENTORY ==="
+echo "=== Platform: $UNAME_S -> provider=$PROVIDER inventory=$INVENTORY ==="
 
 case "$PROVIDER" in
   vagrant)

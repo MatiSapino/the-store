@@ -1,19 +1,13 @@
 SHELL := /usr/bin/env bash
 
 UNAME_S := $(shell uname -s)
-UNAME_M := $(shell uname -m)
 
-# Detect platform and pick the right VM backend + ansible wrapper
+# Detect platform and pick the right VM backend + ansible wrapper.
+# macOS = Apple Silicon con Lima; el resto = Linux/WSL con Vagrant.
 ifeq ($(UNAME_S),Darwin)
-  ifeq ($(UNAME_M),arm64)
-    ANSIBLE_SCRIPT := scripts/ansible-lima.sh
-    VM_UP_CMD      := bash scripts/lima-up.sh
-    VM_DOWN_CMD    := limactl delete --force cp worker1 worker2 2>/dev/null; true
-  else
-    ANSIBLE_SCRIPT := scripts/ansible-mac.sh
-    VM_UP_CMD      := vagrant up
-    VM_DOWN_CMD    := vagrant destroy -f
-  endif
+  ANSIBLE_SCRIPT := scripts/ansible-lima.sh
+  VM_UP_CMD      := bash scripts/lima-up.sh
+  VM_DOWN_CMD    := limactl delete --force cp worker1 worker2 2>/dev/null; true
 else
   # Linux or WSL
   ANSIBLE_SCRIPT := scripts/ansible-wsl.sh
@@ -38,8 +32,8 @@ SERVICES      := catalog cart orders checkout ui
 help:
 	@echo "Usage: make <target>"
 	@echo ""
-	@echo "  up          Bring up all VMs with Vagrant"
-	@echo "  down        Destroy all VMs (vagrant destroy -f)"
+	@echo "  up          Bring up all VMs with the detected provider"
+	@echo "  down        Destroy all VMs with the detected provider"
 	@echo "  deploy      Run full Ansible site.yml against running VMs"
 	@echo "  status      Show cluster node and pod status"
 	@echo "  scale       Levantar worker3 y unirlo al cluster (caso 3)"

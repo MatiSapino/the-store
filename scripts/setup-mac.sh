@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Install all prerequisites for macOS (Apple Silicon and Intel).
+# Install all prerequisites for macOS Apple Silicon.
 # Run once before doing anything else: bash scripts/setup-mac.sh
 set -euo pipefail
 
@@ -40,6 +40,13 @@ brew_cask_install() {
 # ── Homebrew ───────────────────────────────────────────────────────────────────
 require_brew
 
+if [[ "$ARCH" != "arm64" ]]; then
+  echo ""
+  warn "macOS Intel no está soportado por este proyecto."
+  warn "Usá Linux nativo o Windows + WSL2 (scripts/setup-linux.sh)."
+  exit 1
+fi
+
 # ── Common tools ───────────────────────────────────────────────────────────────
 brew_install python3
 brew_install ansible
@@ -56,105 +63,36 @@ else
   ok "Docker already available"
 fi
 
-# ── Vagrant ────────────────────────────────────────────────────────────────────
-brew_cask_install vagrant
+# ── Lima VM backend ────────────────────────────────────────────────────────────
+echo ""
+echo "=== Apple Silicon detected — installing Lima backend ==="
+brew_install lima
 
-# ── Platform-specific VM backend ───────────────────────────────────────────────
-if [[ "$ARCH" == "arm64" ]]; then
-  echo ""
-  echo "=== Apple Silicon detected ==="
-  echo ""
-  echo "You need ONE of the following VM backends:"
-  echo ""
-  echo "  Option A (recommended): vagrant-qemu + socket_vmnet"
-  echo "  Option B (alternative):  Lima"
-  echo ""
-  read -rp "Which option? [A/B] " choice
-  choice="${choice:-A}"
-  choice="$(echo "$choice" | tr '[:lower:]' '[:upper:]')"
-
-  if [[ "$choice" == "A" ]]; then
-    # ── Option A: vagrant-qemu + socket_vmnet ──────────────────────────────────
-    brew_install qemu
-
-    info "Installing vagrant-qemu plugin..."
-    if vagrant plugin list 2>/dev/null | grep -q vagrant-qemu; then
-      ok "vagrant-qemu already installed"
-    else
-      vagrant plugin install vagrant-qemu
-    fi
-
-    # socket_vmnet — required for host-only networking in QEMU VMs
-    echo ""
-    info "Setting up socket_vmnet for QEMU host-only networking..."
-    if brew list socket_vmnet >/dev/null 2>&1; then
-      ok "socket_vmnet already installed"
-    else
-      brew install socket_vmnet
-    fi
-
-    # Integrate with launchd (requires sudo once)
-    if ! launchctl print system/io.github.virtualsquare.vde.socket_vmnet >/dev/null 2>&1; then
-      info "Registering socket_vmnet with launchd (requires sudo)..."
-      sudo brew services start socket_vmnet
-      ok "socket_vmnet service started"
-    else
-      ok "socket_vmnet service already registered"
-    fi
-
-    echo ""
-    ok "Option A setup complete. Use: vagrant up --provider qemu"
-    echo "Or just: make up  (the Makefile picks the right provider automatically)"
-
-  else
-    # ── Option B: Lima ─────────────────────────────────────────────────────────
-    brew_install lima
-
-    # Lima also needs socket_vmnet for vmnet-shared (inter-VM networking)
-    echo ""
-    info "Installing socket_vmnet for Lima vmnet-shared networking..."
-    if brew list socket_vmnet >/dev/null 2>&1; then
-      ok "socket_vmnet already installed"
-    else
-      brew install socket_vmnet
-    fi
-
-    if ! launchctl print system/io.github.virtualsquare.vde.socket_vmnet >/dev/null 2>&1; then
-      info "Registering socket_vmnet with launchd (requires sudo)..."
-      sudo brew services start socket_vmnet
-    else
-      ok "socket_vmnet service already registered"
-    fi
-
-    # Authorize socket_vmnet for Lima
-    if ! limactl sudoers 2>/dev/null | sudo tee /etc/sudoers.d/lima >/dev/null; then
-      warn "Failed to write Lima sudoers — Lima vmnet may not work."
-      warn "Try manually: limactl sudoers | sudo tee /etc/sudoers.d/lima"
-    else
-      ok "Lima sudoers configured"
-    fi
-
-    echo ""
-    ok "Option B setup complete. Use: bash scripts/lima-up.sh"
-    echo "Then run Ansible with: bash scripts/ansible-lima.sh ansible/site.yml"
-  fi
-
+echo ""
+info "Installing socket_vmnet for Lima vmnet-shared networking..."
+if brew list socket_vmnet >/dev/null 2>&1; then
+  ok "socket_vmnet already installed"
 else
-  # ── Intel Mac: VirtualBox ───────────────────────────────────────────────────
-  echo ""
-  echo "=== Intel Mac detected — installing VirtualBox ==="
-  brew_cask_install virtualbox
-
-  info "Installing vagrant-vbguest plugin..."
-  if vagrant plugin list 2>/dev/null | grep -q vagrant-vbguest; then
-    ok "vagrant-vbguest already installed"
-  else
-    vagrant plugin install vagrant-vbguest
-  fi
-
-  echo ""
-  ok "Intel Mac setup complete. Use: vagrant up"
+  brew install socket_vmnet
 fi
+
+if ! launchctl print system/io.github.virtualsquare.vde.socket_vmnet >/dev/null 2>&1; then
+  info "Registering socket_vmnet with launchd (requires sudo)..."
+  sudo brew services start socket_vmnet
+else
+  ok "socket_vmnet service already registered"
+fi
+
+if ! limactl sudoers 2>/dev/null | sudo tee /etc/sudoers.d/lima >/dev/null; then
+  warn "Failed to write Lima sudoers — Lima vmnet may not work."
+  warn "Try manually: limactl sudoers | sudo tee /etc/sudoers.d/lima"
+else
+  ok "Lima sudoers configured"
+fi
+
+echo ""
+ok "Lima setup complete. Use: make up"
+echo "Then deploy with: make deploy"
 
 # ── Ansible collections ────────────────────────────────────────────────────────
 echo ""

@@ -15,7 +15,10 @@
 
     - name: Verificar estado del container registry
       ansible.builtin.shell: |
-        current_port="$(docker port registry 5000/tcp 2>/dev/null | sed -n 's/.*://p' | head -n 1)"
+        # `docker inspect .HostConfig.PortBindings` lee el mapeo de puerto del
+        # container aunque esté detenido (`docker port` sólo sirve si corre),
+        # así detectamos un registry viejo bindeado a otro puerto y lo recreamos.
+        current_port="$(docker inspect -f {% raw %}'{{ (index (index .HostConfig.PortBindings "5000/tcp") 0).HostPort }}'{% endraw %} registry 2>/dev/null || true)"
         if [ -n "$current_port" ] && [ "$current_port" != "{{ registry_port }}" ]; then
           docker rm -f registry >/dev/null
         fi
