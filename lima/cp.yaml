@@ -25,6 +25,10 @@ provision:
       echo "$(whoami) ALL=(ALL) NOPASSWD:ALL" > /etc/sudoers.d/99-lima-nopasswd
       chmod 440 /etc/sudoers.d/99-lima-nopasswd
 
+networks:
+  - lima: shared    # socket_vmnet shared network — gives VMs unique IPs on the same subnet
+                    # so K3s nodes can reach each other. Requires socket_vmnet (setup-mac.sh).
+
 ssh:
   localPort: 60010   # fixed so hosts-lima.yml ansible_port never needs manual editing
 

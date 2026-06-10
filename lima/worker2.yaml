@@ -21,6 +21,9 @@ provision:
       echo "$(whoami) ALL=(ALL) NOPASSWD:ALL" > /etc/sudoers.d/99-lima-nopasswd
       chmod 440 /etc/sudoers.d/99-lima-nopasswd
 
+networks:
+  - lima: shared
+
 ssh:
   localPort: 60012
 
