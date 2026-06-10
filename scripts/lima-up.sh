@@ -35,7 +35,7 @@ wait_for_ip() {
     ip="$(get_ip "$name")"
     [[ -n "$ip" ]] && { echo "$ip"; return 0; }
     i=$((i + 1))
-    echo "[..] Waiting for $name to get an IP ($i/12)..."
+    echo "[..] Waiting for $name to get an IP ($i/12)..." >&2
     sleep 5
   done
   echo ""
@@ -49,9 +49,9 @@ start_vm worker2
 
 echo ""
 echo "=== Discovering VM IPs ==="
-CP_IP="$(wait_for_ip cp)"
-W1_IP="$(wait_for_ip worker1)"
-W2_IP="$(wait_for_ip worker2)"
+CP_IP="$(wait_for_ip cp || true)"
+W1_IP="$(wait_for_ip worker1 || true)"
+W2_IP="$(wait_for_ip worker2 || true)"
 
 for vm_name in cp worker1 worker2; do
   case "$vm_name" in
@@ -99,12 +99,9 @@ for line in lines:
         line = re.sub(r'(k3s_node_ip:\s+)[\d.]+', r'\g<1>' + ip_map[current_host], line)
         current_host = None
 
-    # Uncomment / update registry_host in the vars section
+    # Update Lima host-level registry_host overrides.
     if gw:
-        if re.match(r'\s+#\s*registry_host:', line):
-            indent = ' ' * (len(line) - len(line.lstrip()))
-            line = indent + 'registry_host: "' + gw + '"\n'
-        elif re.match(r'\s+registry_host:', line):
+        if re.match(r'\s+registry_host:', line):
             line = re.sub(r'(registry_host:\s+)["\']?[\d.]+["\']?', r'\g<1>"' + gw + '"', line)
 
     out.append(line)

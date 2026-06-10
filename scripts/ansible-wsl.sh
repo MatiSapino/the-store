@@ -59,7 +59,7 @@ fi
 
 [[ -f "$key_file" ]] && chmod 600 "$key_file"
 
-for host in 192.168.56.10 192.168.56.11 192.168.56.12; do
+for host in 192.168.56.10 192.168.56.11 192.168.56.12 192.168.56.13; do
   ssh-keygen -R "$host" >/dev/null 2>&1 || true
 done
 

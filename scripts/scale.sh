@@ -38,6 +38,33 @@ if ! command -v ansible-playbook >/dev/null 2>&1; then
   exit 1
 fi
 
+get_lima_ip() {
+  local name="$1"
+  limactl shell "$name" ip -4 addr show lima0 2>/dev/null \
+    | grep -oE 'inet ([0-9]{1,3}\.){3}[0-9]{1,3}' \
+    | awk '{print $2}' \
+    | head -1 || true
+}
+
+wait_for_lima_ip() {
+  local name="$1" ip="" i=0
+  while [[ $i -lt 12 ]]; do
+    ip="$(get_lima_ip "$name")"
+    [[ -n "$ip" ]] && { echo "$ip"; return 0; }
+    i=$((i + 1))
+    echo "[..] Esperando IP lima0 para $name ($i/12)..." >&2
+    sleep 5
+  done
+  echo ""
+  return 1
+}
+
+get_lima_gateway() {
+  limactl shell cp ip -4 route show dev lima0 2>/dev/null \
+    | awk '/default/{print $3}' \
+    | head -1 || true
+}
+
 uncomment_scale() {
   local file="$1"
   if grep -q '^[[:space:]]*#scale# ' "$file"; then
@@ -65,21 +92,21 @@ case "$PROVIDER" in
     else
       echo "[OK]  worker3 ya estaba Running"
     fi
-    W3_IP="$(limactl shell worker3 ip -4 addr 2>/dev/null \
-      | grep -oE '([0-9]{1,3}\.){3}[0-9]{1,3}' \
-      | grep -v '^127\.' \
-      | head -1 || true)"
+    W3_IP="$(wait_for_lima_ip worker3 || true)"
     if [[ -z "$W3_IP" ]]; then
-      echo "[!!] No pude obtener la IP de worker3" >&2
+      echo "[!!] No pude obtener la IP lima0 de worker3" >&2
       exit 1
     fi
-    python3 - "$INVENTORY" "$W3_IP" <<'PYEOF'
+    GW="$(get_lima_gateway)"
+    [[ -z "$GW" ]] && GW="192.168.56.1"
+    python3 - "$INVENTORY" "$W3_IP" "$GW" <<'PYEOF'
 import re, sys
-inv, ip = sys.argv[1], sys.argv[2]
+inv, ip, gw = sys.argv[1], sys.argv[2], sys.argv[3]
 with open(inv) as f: src = f.read()
 src = re.sub(r'(worker3:[\s\S]*?k3s_node_ip:\s+)[\d.]+', r'\g<1>' + ip, src)
+src = re.sub(r'(registry_host:\s+)["\']?[\d.]+["\']?', r'\g<1>"' + gw + '"', src)
 open(inv, 'w').write(src)
-print(f"[OK]  worker3 -> {ip} en {inv}")
+print(f"[OK]  worker3 -> {ip}; registry_host -> {gw} en {inv}")
 PYEOF
     ;;
 esac

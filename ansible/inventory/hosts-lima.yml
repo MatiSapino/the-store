@@ -30,6 +30,7 @@ all:
               ansible_host: 127.0.0.1
               ansible_port: 60010
               k3s_node_ip: 192.168.56.2
+              registry_host: "192.168.56.1"
 
         workers:
           hosts:
@@ -37,14 +38,17 @@ all:
               ansible_host: 127.0.0.1
               ansible_port: 60011
               k3s_node_ip: 192.168.56.3
+              registry_host: "192.168.56.1"
             worker2:
               ansible_host: 127.0.0.1
               ansible_port: 60012
               k3s_node_ip: 192.168.56.4
+              registry_host: "192.168.56.1"
             #scale# worker3:
             #scale#   ansible_host: 127.0.0.1
             #scale#   ansible_port: 60013
-            #scale#   k3s_node_ip: 192.168.104.5
+            #scale#   k3s_node_ip: 192.168.56.5
+            #scale#   registry_host: "192.168.56.1"
 
     registry:
       hosts:

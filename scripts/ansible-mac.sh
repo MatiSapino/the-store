@@ -41,7 +41,7 @@ else
 fi
 
 # Clean up stale host keys for localhost ports used by the QEMU VMs
-for port in 50010 50011 50012; do
+for port in 50010 50011 50012 50013; do
   ssh-keygen -R "[127.0.0.1]:$port" >/dev/null 2>&1 || true
   ssh-keygen -R "[localhost]:$port"  >/dev/null 2>&1 || true
 done

@@ -50,7 +50,7 @@ for vm in cp worker1 worker2; do
 done
 
 # Clean up stale host keys for Lima SSH ports
-for port in 60010 60011 60012; do
+for port in 60010 60011 60012 60013; do
   ssh-keygen -R "[127.0.0.1]:$port" >/dev/null 2>&1 || true
   ssh-keygen -R "[localhost]:$port"  >/dev/null 2>&1 || true
 done
