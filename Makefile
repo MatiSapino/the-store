@@ -10,9 +10,10 @@ ifeq ($(UNAME_S),Darwin)
   VM_DOWN_CMD    := limactl delete --force cp worker1 worker2 worker3 2>/dev/null; true
 else
   # Linux or WSL
+  VAGRANT_CMD    := $(shell if command -v vagrant >/dev/null 2>&1; then printf 'vagrant'; elif command -v vagrant.exe >/dev/null 2>&1; then printf 'vagrant.exe'; else printf 'vagrant'; fi)
   ANSIBLE_SCRIPT := scripts/ansible-wsl.sh
-  VM_UP_CMD      := vagrant up
-  VM_DOWN_CMD    := vagrant destroy -f
+  VM_UP_CMD      := $(VAGRANT_CMD) up
+  VM_DOWN_CMD    := $(VAGRANT_CMD) destroy -f
 endif
 
 KUBECONFIG := ansible/k3s.yaml
@@ -37,7 +38,7 @@ help:
 	@echo "  deploy      Run full Ansible site.yml against running VMs"
 	@echo "  status      Show cluster node and pod status"
 	@echo "  scale       Levantar worker3 y unirlo al cluster (caso 3)"
-	@echo "  dashboard   Deployar kube-ops-view + Headlamp para la demo visual (opcional)"
+	@echo "  dashboard   Deployar Headlamp para la demo visual (opcional)"
 	@echo "  dashboard-down  Borrar el namespace de dashboards"
 	@echo "  teardown    Uninstall K3s from VMs (keeps VMs running)"
 	@echo "  clean       Stop local Docker registry container"
@@ -160,9 +161,14 @@ check:
 	@echo "=== Checking prerequisites ==="
 	@if command -v ansible >/dev/null; then echo "ansible:    OK ($$(ansible --version | head -1))"; else echo "ansible:    MISSING"; fi
 	@if command -v docker  >/dev/null; then echo "docker:     OK ($$(docker --version))"; else echo "docker:     MISSING"; fi
-	@if command -v vagrant >/dev/null; then echo "vagrant:    OK ($$(vagrant --version))"; else echo "vagrant:    MISSING (necesario salvo macOS arm64 con Lima)"; fi
+ifeq ($(UNAME_S),Darwin)
+	@if command -v limactl >/dev/null; then echo "limactl:    OK ($$(limactl --version))"; else echo "limactl:    MISSING (necesario en macOS Apple Silicon)"; fi
+else
+	@if command -v vagrant >/dev/null; then echo "vagrant:    OK ($$(vagrant --version))"; elif command -v vagrant.exe >/dev/null; then echo "vagrant:    OK ($$(vagrant.exe --version | tr -d '\r') via vagrant.exe/Windows)"; else echo "vagrant:    MISSING (Linux: instalar Vagrant; WSL: instalar Vagrant en Windows y habilitar interop)"; fi
+endif
 	@if command -v kubectl >/dev/null; then echo "kubectl:    OK ($$(kubectl version --client 2>/dev/null | head -1))"; else echo "kubectl:    not installed (opcional, solo para verificar el cluster)"; fi
-	@if command -v limactl >/dev/null; then echo "limactl:    OK ($$(limactl --version))"; else echo "limactl:    not installed (solo macOS arm64 con Lima)"; fi
+ifeq ($(UNAME_S),Darwin)
 	@echo ""
 	@echo "=== Lima VMs ==="
 	@command -v limactl >/dev/null && limactl list 2>/dev/null || echo "(no Lima VMs)"
+endif
