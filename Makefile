@@ -8,7 +8,7 @@ ifeq ($(UNAME_S),Darwin)
   ifeq ($(UNAME_M),arm64)
     ANSIBLE_SCRIPT := scripts/ansible-lima.sh
     VM_UP_CMD      := bash scripts/lima-up.sh
-    VM_DOWN_CMD    := limactl stop cp worker1 worker2 2>/dev/null; limactl delete cp worker1 worker2 2>/dev/null; true
+    VM_DOWN_CMD    := limactl delete --force cp worker1 worker2 2>/dev/null; true
   else
     ANSIBLE_SCRIPT := scripts/ansible-mac.sh
     VM_UP_CMD      := vagrant up
