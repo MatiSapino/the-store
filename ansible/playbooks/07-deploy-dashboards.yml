@@ -8,6 +8,20 @@
     headlamp_image: "ghcr.io/headlamp-k8s/headlamp:v0.42.0"
     headlamp_nodeport: 30091
   tasks:
+    - name: Verificar namespace {{ dashboards_namespace }}
+      ansible.builtin.command: kubectl get namespace {{ dashboards_namespace }}
+      environment:
+        KUBECONFIG: /etc/rancher/k3s/k3s.yaml
+      register: dashboards_namespace_get
+      changed_when: false
+      failed_when: false
+
+    - name: Crear namespace {{ dashboards_namespace }}
+      ansible.builtin.command: kubectl create namespace {{ dashboards_namespace }}
+      environment:
+        KUBECONFIG: /etc/rancher/k3s/k3s.yaml
+      when: dashboards_namespace_get.rc != 0
+
     - name: Renderizar manifest de Headlamp
       ansible.builtin.template:
         src: "{{ playbook_dir | dirname }}/templates/headlamp.yaml.j2"
