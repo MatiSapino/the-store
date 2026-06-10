@@ -69,7 +69,7 @@ if [[ "$ARCH" == "arm64" ]]; then
   echo "  Option A (recommended): vagrant-qemu + socket_vmnet"
   echo "  Option B (alternative):  Lima"
   echo ""
-  read -rp "Which option? [A/b] " choice
+  read -rp "Which option? [A/B] " choice
   choice="${choice:-A}"
   choice="$(echo "$choice" | tr '[:lower:]' '[:upper:]')"
 
