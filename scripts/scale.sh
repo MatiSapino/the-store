@@ -14,14 +14,22 @@ else
   PROVIDER="vagrant"
   ANSIBLE_SCRIPT="scripts/ansible-wsl.sh"
   INVENTORY="ansible/inventory/hosts.yml"
+  if command -v vagrant >/dev/null 2>&1; then
+    VAGRANT_CMD="vagrant"
+  elif command -v vagrant.exe >/dev/null 2>&1; then
+    VAGRANT_CMD="vagrant.exe"
+  else
+    VAGRANT_CMD="vagrant"
+  fi
 fi
 
 echo "=== Platform: $UNAME_S -> provider=$PROVIDER inventory=$INVENTORY ==="
 
 case "$PROVIDER" in
   vagrant)
-    if ! command -v vagrant >/dev/null 2>&1; then
-      echo "ERROR: vagrant no esta instalado. Corre 'bash scripts/setup-linux.sh' (o el setup-* de tu SO) primero." >&2
+    if ! command -v "$VAGRANT_CMD" >/dev/null 2>&1; then
+      echo "ERROR: vagrant no esta instalado." >&2
+      echo "       En Linux, corre 'bash scripts/setup-linux.sh'. En WSL, instala Vagrant en Windows y habilita WSL interop." >&2
       exit 1
     fi
     ;;
@@ -80,8 +88,8 @@ case "$PROVIDER" in
   vagrant)
     uncomment_scale Vagrantfile
     uncomment_scale "$INVENTORY"
-    echo "=== vagrant up worker3 ==="
-    vagrant up worker3
+    echo "=== $VAGRANT_CMD up worker3 ==="
+    "$VAGRANT_CMD" up worker3
     ;;
   lima)
     uncomment_scale "$INVENTORY"
