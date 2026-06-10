@@ -2,23 +2,16 @@
 # Inventory for Lima-based setup (macOS Apple Silicon, Option B).
 # Lima VMs get dynamic IPs on the vmnet-shared network.
 # After running scripts/lima-up.sh, find each VM's IP:
-#   limactl shell cp ip -4 addr show eth1
+#   limactl shell cp ip -4 addr show lima0
 #
 # Update ansible_host values below with the actual IPs.
 # ansible_port comes from `limactl list` (Lima's forwarded SSH port).
 #
-# k3s_node_ip must match the IP on eth1 (the vmnet-shared interface),
-# NOT the loopback or default NAT interface.
-#
-# registry_host must be the host's IP on the vmnet-shared subnet —
-# run: ip -4 addr show vmnet-shared  (or similar, depends on socket_vmnet setup)
-# Typically this is the same 192.168.56.1 gateway if socket_vmnet is configured
-# for that subnet, or a different address — verify with:
-#   limactl shell cp ping <host-ip>
+# k3s_node_ip must match the IP on lima0 (the socket_vmnet shared interface),
+# NOT eth0 (vzNAT — isolated per VM, same IP on all nodes).
 
 all:
   vars:
-    registry_host: "192.168.104.2"
     ansible_user: "{{ lookup('env','USER') }}"
     ansible_ssh_private_key_file: "~/.lima/_config/user"
     ansible_ssh_common_args: >-
@@ -36,19 +29,18 @@ all:
             cp:
               ansible_host: 127.0.0.1
               ansible_port: 60010
-              k3s_node_ip: 192.168.104.1
-              k3s_node_name: lima-cp   # Lima prefixes hostnames; remove after K3s reinstall
+              k3s_node_ip: 192.168.56.2
 
         workers:
           hosts:
             worker1:
               ansible_host: 127.0.0.1
               ansible_port: 60011
-              k3s_node_ip: 192.168.104.3
+              k3s_node_ip: 192.168.56.3
             worker2:
               ansible_host: 127.0.0.1
               ansible_port: 60012
-              k3s_node_ip: 192.168.104.4
+              k3s_node_ip: 192.168.56.4
             #scale# worker3:
             #scale#   ansible_host: 127.0.0.1
             #scale#   ansible_port: 60013
