@@ -90,6 +90,21 @@ case "$PROVIDER" in
     uncomment_scale "$INVENTORY"
     echo "=== $VAGRANT_CMD up worker3 ==="
     "$VAGRANT_CMD" up worker3
+    # vagrant marca la VM como ready cuando eth0 (red default) acepta SSH,
+    # pero eth1 (red privada the-store0, 192.168.56.0/24) la trae cloud-init
+    # despues. Esperar a 192.168.56.13:22 evita la race con Ansible.
+    echo "=== Esperando a que 192.168.56.13 (eth1) acepte SSH ==="
+    for _ in {1..60}; do
+      if (echo > /dev/tcp/192.168.56.13/22) 2>/dev/null; then
+        echo "[OK]  eth1 lista para SSH"
+        break
+      fi
+      sleep 2
+    done
+    if ! (echo > /dev/tcp/192.168.56.13/22) 2>/dev/null; then
+      echo "[!!] 192.168.56.13:22 no responde despues de 120s" >&2
+      exit 1
+    fi
     ;;
   lima)
     uncomment_scale "$INVENTORY"
