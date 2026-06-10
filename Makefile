@@ -38,7 +38,7 @@ help:
 	@echo "  deploy      Run full Ansible site.yml against running VMs"
 	@echo "  status      Show cluster node and pod status"
 	@echo "  scale       Levantar worker3 y unirlo al cluster (caso 3)"
-	@echo "  dashboard   Deployar kube-ops-view + Headlamp para la demo visual (opcional)"
+	@echo "  dashboard   Deployar Headlamp para la demo visual (opcional)"
 	@echo "  dashboard-down  Borrar el namespace de dashboards"
 	@echo "  teardown    Uninstall K3s from VMs (keeps VMs running)"
 	@echo "  clean       Stop local Docker registry container"
