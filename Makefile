@@ -26,7 +26,7 @@ REGISTRY_URL  := http://$(REGISTRY_HOST):$(REGISTRY_PORT)
 APP_NAMESPACE := the-store
 SERVICES      := catalog cart orders checkout ui
 
-.PHONY: help up down deploy status teardown clean collections check scale \
+.PHONY: help up down deploy status teardown clean collections check scale descale \
         dashboard dashboard-down \
         play-01 play-02 play-03 play-04 play-05 play-06
 
@@ -38,6 +38,7 @@ help:
 	@echo "  deploy      Run full Ansible site.yml against running VMs"
 	@echo "  status      Show cluster node and pod status"
 	@echo "  scale       Levantar worker3 y unirlo al cluster (caso 3)"
+	@echo "  descale     Drenar worker3, destruir la VM y volver al cluster base"
 	@echo "  dashboard   Deployar Headlamp para la demo visual (opcional)"
 	@echo "  dashboard-down  Borrar el namespace de dashboards"
 	@echo "  teardown    Uninstall K3s from VMs (keeps VMs running)"
@@ -141,6 +142,9 @@ status:
 
 scale:
 	bash scripts/scale.sh
+
+descale:
+	bash scripts/descale.sh
 
 dashboard:
 	bash $(ANSIBLE_SCRIPT) ansible/playbooks/07-deploy-dashboards.yml

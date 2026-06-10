@@ -104,6 +104,14 @@ make scale
 
 El target corre `scripts/scale.sh`, que destapa el bloque `#scale#` de worker3 en los archivos que correspondan a la plataforma, levanta la VM (Vagrant o Lima) y ejecuta los plays `01-prepare-nodes` y `03-join-workers` con `--limit worker3`. Al final verifica con `kubectl get node worker3` que el nodo aparezca `Ready`.
 
+Para volver al cluster base de 3 nodos:
+
+```bash
+make descale
+```
+
+El target drena `worker3`, lo borra del cluster, destruye la VM y vuelve a comentar el bloque `#scale#` para que `make scale` pueda repetir la demo desde cero.
+
 ### 4. Teardown completo
 
 ```bash
