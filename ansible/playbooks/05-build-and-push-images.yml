@@ -1,11 +1,24 @@
 ---
 # Construye las imágenes Docker de los 5 microservicios y las sube al registry local.
 # Usa las variables: registry_host, registry_port, image_tag, services (de group_vars/all.yml)
-# Tareas a implementar:
+# Tareas principales:
 #   - Loop sobre services [catalog, cart, orders, checkout, ui]:
-#       docker build -t {registry_host}:{registry_port}/the-store-{svc}:{image_tag} src/{svc}/
-#       docker push {registry_host}:{registry_port}/the-store-{svc}:{image_tag}
+#       docker build -t {registry_local_endpoint}/the-store-{svc}:{image_tag} src/{svc}/
+#       docker push {registry_local_endpoint}/the-store-{svc}:{image_tag}
 - name: Construir y subir imágenes al registry local
   hosts: registry
   gather_facts: false
-  tasks: []
+  tasks:
+    - name: Construir imagen de cada microservicio
+      ansible.builtin.command: >-
+        docker build
+        -t {{ registry_local_endpoint }}/the-store-{{ item }}:{{ image_tag }}
+        {{ playbook_dir }}/../../src/{{ item }}/
+      loop: "{{ services }}"
+      changed_when: true
+
+    - name: Subir imagen al registry local
+      ansible.builtin.command: >-
+        docker push {{ registry_local_endpoint }}/the-store-{{ item }}:{{ image_tag }}
+      loop: "{{ services }}"
+      changed_when: true

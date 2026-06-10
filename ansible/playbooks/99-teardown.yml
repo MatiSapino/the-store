@@ -1,17 +1,35 @@
 ---
 # Desinstala K3s de todos los nodos (fallback si no se usa "vagrant destroy").
 # Con Vagrant, el teardown completo es simplemente: vagrant destroy -f
-# Tareas a implementar:
+# Tareas principales:
 #   - workers: ejecutar /usr/local/bin/k3s-agent-uninstall.sh (si existe)
 #   - control_plane: ejecutar /usr/local/bin/k3s-uninstall.sh (si existe)
 - name: Teardown K3s en workers
   hosts: workers
   become: true
   gather_facts: false
-  tasks: []
+  tasks:
+    - name: Verificar existencia del script de desinstalación del agente
+      ansible.builtin.stat:
+        path: /usr/local/bin/k3s-agent-uninstall.sh
+      register: agent_uninstall_script
+
+    - name: Desinstalar K3s Agent
+      ansible.builtin.command: /usr/local/bin/k3s-agent-uninstall.sh
+      when: agent_uninstall_script.stat.exists
+      changed_when: true
 
 - name: Teardown K3s en Control Plane
   hosts: control_plane
   become: true
   gather_facts: false
-  tasks: []
+  tasks:
+    - name: Verificar existencia del script de desinstalación del servidor
+      ansible.builtin.stat:
+        path: /usr/local/bin/k3s-uninstall.sh
+      register: server_uninstall_script
+
+    - name: Desinstalar K3s Server
+      ansible.builtin.command: /usr/local/bin/k3s-uninstall.sh
+      when: server_uninstall_script.stat.exists
+      changed_when: true

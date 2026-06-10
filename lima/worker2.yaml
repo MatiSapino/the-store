@@ -1,0 +1,30 @@
+# Lima VM config for K3s Worker 2
+# Usage: limactl start --name=worker2 lima/worker2.yaml
+
+vmType: vz
+os: Linux
+arch: aarch64
+
+images:
+  - location: "https://cloud-images.ubuntu.com/releases/22.04/release/ubuntu-22.04-server-cloudimg-arm64.img"
+    arch: aarch64
+
+cpus: 2
+memory: "1536MiB"
+disk: "20GiB"
+
+
+provision:
+  - mode: system
+    script: |
+      #!/bin/bash
+      echo "$(whoami) ALL=(ALL) NOPASSWD:ALL" > /etc/sudoers.d/99-lima-nopasswd
+      chmod 440 /etc/sudoers.d/99-lima-nopasswd
+
+networks:
+  - lima: shared
+
+ssh:
+  localPort: 60012
+
+mounts: []

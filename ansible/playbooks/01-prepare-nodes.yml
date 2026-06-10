@@ -1,13 +1,13 @@
 ---
 # Prepara el SO de cada nodo del cluster (CP + workers).
-# Tareas a implementar:
+# Tareas principales:
 #   - apt update + instalar dependencias (curl, ca-certificates, iptables)
 #   - Desactivar swap (swapoff -a + comentar /etc/fstab)
 #   - Cargar módulos de kernel: br_netfilter, overlay
 #   - sysctl: net.bridge.bridge-nf-call-iptables=1, net.ipv4.ip_forward=1
-#   - Copiar files/registries.yaml → /etc/rancher/k3s/registries.yaml
+#   - Renderizar registries.yaml → /etc/rancher/k3s/registries.yaml
 #     (debe existir ANTES de instalar K3s para que containerd lo lea al arrancar)
-#   - ufw: abrir 6443/tcp, 10250/tcp, 8472/udp si ufw está activo
+#   - ufw: abrir 80/tcp, 6443/tcp, 10250/tcp, 8472/udp si ufw está activo
 - name: Preparar nodos del cluster
   hosts: cluster
   become: true
@@ -70,9 +70,9 @@
         state: directory
         mode: '0755'
 
-    - name: Copiar registries.yaml para containerd
-      ansible.builtin.copy:
-        src: "{{ playbook_dir | dirname }}/files/registries.yaml"
+    - name: Renderizar registries.yaml para containerd
+      ansible.builtin.template:
+        src: "{{ playbook_dir | dirname }}/templates/registries.yaml.j2"
         dest: /etc/rancher/k3s/registries.yaml
         mode: '0644'
 
@@ -88,6 +88,7 @@
         port: "{{ item.port }}"
         proto: "{{ item.proto }}"
       loop:
+        - { port: "80", proto: "tcp" }     # HTTP ingress
         - { port: "6443", proto: "tcp" }   # API server K3s
         - { port: "10250", proto: "tcp" }  # Kubelet
         - { port: "8472", proto: "udp" }   # Flannel VXLAN

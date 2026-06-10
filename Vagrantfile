@@ -2,7 +2,7 @@ Vagrant.configure("2") do |config|
   # Detect macOS Apple Silicon to choose provider and box automatically
   is_arm_mac = RUBY_PLATFORM.match?(/arm64.*darwin|darwin.*arm64/)
 
-  config.vm.box = is_arm_mac ? "perk/ubuntu-2204-arm64" : "bento/ubuntu-22.04"
+  config.vm.box = is_arm_mac ? "perk/ubuntu-2204-arm64" : "generic/ubuntu2204"
   config.vm.box_check_update = false
 
   # Boxes can take longer than 5 min to expose SSH when booting several VMs
@@ -16,8 +16,7 @@ Vagrant.configure("2") do |config|
     { name: "cp",      ip: "192.168.56.10", cpus: 2, memory: 2048, ssh_port: 50010 },
     { name: "worker1", ip: "192.168.56.11", cpus: 2, memory: 1536, ssh_port: 50011 },
     { name: "worker2", ip: "192.168.56.12", cpus: 2, memory: 1536, ssh_port: 50012 },
-    # Uncomment to add a fourth node for the horizontal-scaling use case:
-    # { name: "worker3", ip: "192.168.56.13", cpus: 2, memory: 1536, ssh_port: 50013 },
+    #scale# { name: "worker3", ip: "192.168.56.13", cpus: 2, memory: 1536, ssh_port: 50013 },
   ]
 
   nodes.each do |node|
@@ -46,8 +45,11 @@ Vagrant.configure("2") do |config|
         end
 
         vm.vm.provider "libvirt" do |lv|
+          lv.driver = "kvm"
+          lv.cpu_mode = "host-passthrough"
           lv.cpus   = node[:cpus]
           lv.memory = node[:memory]
+          lv.tpm_path = nil
         end
       end
     end

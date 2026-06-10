@@ -1,0 +1,86 @@
+---
+- name: Desplegar dashboards visuales (kube-ops-view + Headlamp)
+  hosts: control_plane
+  become: true
+  gather_facts: false
+  vars:
+    dashboards_namespace: dashboards
+    kube_ops_view_image: "hjacobs/kube-ops-view:23.5.0"
+    kube_ops_view_nodeport: 30090
+    headlamp_image: "ghcr.io/headlamp-k8s/headlamp:v0.42.0"
+    headlamp_nodeport: 30091
+  tasks:
+    - name: Renderizar manifest de kube-ops-view
+      ansible.builtin.template:
+        src: "{{ playbook_dir | dirname }}/templates/kube-ops-view.yaml.j2"
+        dest: /tmp/kube-ops-view.yaml
+        mode: '0644'
+
+    - name: Renderizar manifest de Headlamp
+      ansible.builtin.template:
+        src: "{{ playbook_dir | dirname }}/templates/headlamp.yaml.j2"
+        dest: /tmp/headlamp.yaml
+        mode: '0644'
+
+    - name: Aplicar kube-ops-view
+      ansible.builtin.command: kubectl apply -f /tmp/kube-ops-view.yaml
+      environment:
+        KUBECONFIG: /etc/rancher/k3s/k3s.yaml
+      register: kops_apply
+      changed_when: "'created' in kops_apply.stdout or 'configured' in kops_apply.stdout"
+
+    - name: Aplicar Headlamp
+      ansible.builtin.command: kubectl apply -f /tmp/headlamp.yaml
+      environment:
+        KUBECONFIG: /etc/rancher/k3s/k3s.yaml
+      register: hl_apply
+      changed_when: "'created' in hl_apply.stdout or 'configured' in hl_apply.stdout"
+
+    - name: Esperar rollout de kube-ops-view
+      ansible.builtin.command: >-
+        kubectl -n {{ dashboards_namespace }} rollout status
+        deployment/kube-ops-view --timeout=180s
+      environment:
+        KUBECONFIG: /etc/rancher/k3s/k3s.yaml
+      changed_when: false
+
+    - name: Esperar rollout de Headlamp
+      ansible.builtin.command: >-
+        kubectl -n {{ dashboards_namespace }} rollout status
+        deployment/headlamp --timeout=180s
+      environment:
+        KUBECONFIG: /etc/rancher/k3s/k3s.yaml
+      changed_when: false
+
+    - name: Esperar a que el token de Headlamp se materialice
+      ansible.builtin.command: >-
+        kubectl -n {{ dashboards_namespace }} get secret headlamp-admin-token
+        -o jsonpath={.data.token}
+      environment:
+        KUBECONFIG: /etc/rancher/k3s/k3s.yaml
+      register: hl_token_b64
+      retries: 12
+      delay: 5
+      until: hl_token_b64.stdout | length > 0
+      changed_when: false
+
+    - name: Decodificar token de Headlamp
+      ansible.builtin.set_fact:
+        headlamp_token: "{{ hl_token_b64.stdout | b64decode }}"
+      no_log: true
+
+    - name: URLs de la demo visual
+      ansible.builtin.debug:
+        msg:
+          - "================================================================"
+          - "  Dashboards visuales listos"
+          - "================================================================"
+          - ""
+          - "  kube-ops-view:  http://{{ k3s_node_ip }}:{{ kube_ops_view_nodeport }}/"
+          - "  Headlamp:       http://{{ k3s_node_ip }}:{{ headlamp_nodeport }}/"
+          - ""
+          - "  Token de Headlamp (copiar entero, sin saltos de linea):"
+          - "  {{ headlamp_token }}"
+          - ""
+          - "  Para bajarlos: make dashboard-down"
+          - "================================================================"

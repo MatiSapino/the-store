@@ -48,19 +48,18 @@ if [[ ! -f "$key_file" ]]; then
   win_key="$win_home/.vagrant.d/insecure_private_key"
 
   if [[ -z "$win_home" || ! -f "$win_key" ]]; then
-    echo "ERROR: Vagrant insecure key was not found in WSL or Windows." >&2
-    echo "Set VAGRANT_WINDOWS_HOME, for example:" >&2
-    echo "  VAGRANT_WINDOWS_HOME=/mnt/c/Users/EMINE bash scripts/ansible-wsl.sh" >&2
-    exit 1
+    echo "WARN: Vagrant insecure key no encontrada (ni en WSL ni en Windows)." >&2
+    echo "      Si el playbook hace SSH a las VMs va a fallar. Para forzar la ruta de Windows:" >&2
+    echo "      VAGRANT_WINDOWS_HOME=/mnt/c/Users/EMINE bash scripts/ansible-wsl.sh" >&2
+  else
+    mkdir -p "$key_dir"
+    cp "$win_key" "$key_file"
   fi
-
-  mkdir -p "$key_dir"
-  cp "$win_key" "$key_file"
 fi
 
-chmod 600 "$key_file"
+[[ -f "$key_file" ]] && chmod 600 "$key_file"
 
-for host in 192.168.56.10 192.168.56.11 192.168.56.12; do
+for host in 192.168.56.10 192.168.56.11 192.168.56.12 192.168.56.13; do
   ssh-keygen -R "$host" >/dev/null 2>&1 || true
 done
 
