@@ -84,7 +84,7 @@ make up
 make deploy
 ```
 
-Lo mismo aplica para `make down`, `make scale`, `make descale`, `make status`, `make dashboard` y `make dashboard-down`. El wrapper de WSL copia la clave insegura de Vagrant al home de WSL si hace falta, limpia las host keys de `192.168.56.10-13` y corre el playbook con `ANSIBLE_HOST_KEY_CHECKING=False` e inventario explícito.
+Lo mismo aplica para `make down`, `make scale`, `make descale`, `make replicas`, `make unreplicas`, `make status`, `make dashboard` y `make dashboard-down`. El wrapper de WSL copia la clave insegura de Vagrant al home de WSL si hace falta, limpia las host keys de `192.168.56.10-13` y corre el playbook con `ANSIBLE_HOST_KEY_CHECKING=False` e inventario explícito.
 
 ### 2. Verificar el estado del cluster
 
@@ -102,7 +102,41 @@ make k9s
 
 `make k9s` abre la UI de k9s con `KUBECONFIG=ansible/k3s.yaml`.
 
-### 3. Escalar agregando un worker
+### Instalar k9s
+
+En Linux/WSL2, si no tenés `k9s` instalado:
+
+```bash
+ARCH=$(dpkg --print-architecture)
+curl -sL "https://github.com/derailed/k9s/releases/latest/download/k9s_Linux_${ARCH}.tar.gz" -o /tmp/k9s.tar.gz
+tar -xzf /tmp/k9s.tar.gz -C /tmp k9s
+sudo install /tmp/k9s /usr/local/bin/k9s
+k9s version
+```
+
+Después podés abrirlo contra el cluster del TP con:
+
+```bash
+make k9s
+```
+
+### 3. Escalar réplicas de la aplicación
+
+Para mostrar escalado horizontal de workloads sin cambiar el manifiesto base:
+
+```bash
+make replicas
+```
+
+El target sube `ui` a 3 réplicas y `catalog` a 2, espera el rollout de ambos deployments y muestra los pods resultantes. Es útil para verlo en Headlamp o k9s durante la demo.
+
+Para volver al estado base:
+
+```bash
+make unreplicas
+```
+
+### 4. Escalar agregando un worker
 
 ```bash
 make scale
@@ -118,7 +152,7 @@ make descale
 
 El target drena `worker3`, lo borra del cluster, destruye la VM y vuelve a comentar el bloque `#scale#` para que `make scale` pueda repetir la demo desde cero.
 
-### 4. Teardown completo
+### 5. Teardown completo
 
 ```bash
 make down
@@ -155,9 +189,11 @@ Para bajarlos: `make dashboard-down` (borra el namespace `dashboards`).
 **Sugerencia de demo de 5 min**:
 1. Headlamp abierto: mostrar los 5 microservicios desplegados y sus services.
 2. Browser en `http://192.168.56.10`: la app real funcionando.
-3. `kubectl delete pod -n the-store -l app.kubernetes.io/name=ui` → ver en Headlamp cómo Kubernetes recrea el pod.
-4. `make scale` → ver aparecer `worker3` en la vista de nodos de Headlamp.
-5. `make down && make up && make deploy` (Caso 4) → cluster completo cae y vuelve.
+3. `make replicas` → ver cómo `ui` pasa a 3 pods y `catalog` a 2 pods.
+4. `kubectl delete pod -n the-store -l app.kubernetes.io/name=ui` → ver en Headlamp cómo Kubernetes recrea el pod.
+5. `make scale` → ver aparecer `worker3` en la vista de nodos de Headlamp.
+6. `make unreplicas` y `make descale` → volver al cluster base.
+7. `make down && make up && make deploy` (Caso 5) → cluster completo cae y vuelve.
 
 ## Casos de uso del TP
 
@@ -165,8 +201,9 @@ Para bajarlos: `make dashboard-down` (borra el namespace `dashboards`).
 |---|------|-------------------|------------|
 | 1 | Crear cluster desde VMs limpias | `make up && make deploy` | `kubectl get nodes` → 3 nodos Ready |
 | 2 | Desplegar The Store | Incluido en `make deploy` (play 06) | `curl http://192.168.56.10` → UI responde |
-| 3 | Escalado horizontal | `make scale` | `kubectl get nodes` → 4 nodos Ready |
-| 4 | Teardown y redespliegue | `make down && make up && make deploy` | Cluster funcional en < 10 min |
+| 3 | Escalado horizontal de aplicación | `make replicas` | `kubectl get pods -n the-store` → más pods de `ui` y `catalog` |
+| 4 | Escalado horizontal de cluster | `make scale` | `kubectl get nodes` → 4 nodos Ready |
+| 5 | Teardown y redespliegue | `make down && make up && make deploy` | Cluster funcional en < 10 min |
 
 ## Tests
 
@@ -206,6 +243,6 @@ the-store/
 ├── scripts/                      # setup por SO, wrappers de ansible, lima-up, scale/descale
 ├── docs/                         # documentación de la pre-entrega
 ├── samples/                      # datos de demo
-├── Makefile                      # auto-detecta plataforma → up / deploy / scale / descale / down
+├── Makefile                      # auto-detecta plataforma → up / deploy / replicas / scale / down
 └── Vagrantfile                   # define las 3 VMs (+ worker3 opcional)
 ```
