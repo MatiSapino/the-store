@@ -26,7 +26,7 @@ REGISTRY_URL  := http://$(REGISTRY_HOST):$(REGISTRY_PORT)
 APP_NAMESPACE := the-store
 SERVICES      := catalog cart orders checkout ui
 
-.PHONY: help up down deploy status teardown clean collections check scale descale replicas unreplicas k9s \
+.PHONY: help up down deploy status watch teardown clean collections check scale descale replicas unreplicas k9s \
         dashboard dashboard-down \
         play-01 play-02 play-03 play-04 play-05 play-06
 
@@ -37,6 +37,7 @@ help:
 	@echo "  down        Destroy all VMs with the detected provider"
 	@echo "  deploy      Run full Ansible site.yml against running VMs"
 	@echo "  status      Show cluster node and pod status"
+	@echo "  watch       Refrescar pods de the-store cada 1s"
 	@echo "  k9s         Abrir k9s usando ansible/k3s.yaml"
 	@echo "  scale       Levantar worker3 y unirlo al cluster (caso 3)"
 	@echo "  descale     Drenar worker3, destruir la VM y volver al cluster base"
@@ -142,6 +143,9 @@ status:
 	KUBECONFIG=$(KUBECONFIG) kubectl get nodes -o wide
 	@echo ""
 	KUBECONFIG=$(KUBECONFIG) kubectl get pods -A
+
+watch:
+	watch -n 1 env KUBECONFIG=$(KUBECONFIG) kubectl -n $(APP_NAMESPACE) get pods
 
 k9s:
 	KUBECONFIG=$(KUBECONFIG) k9s
