@@ -60,7 +60,7 @@ Cada SO tiene un script de bootstrap y un wrapper de `ansible-playbook` que ya c
 | Plataforma | Bootstrap | VMs | Wrapper Ansible + inventario |
 |---|---|---|---|
 | Linux nativo | `bash scripts/setup-linux.sh` | `vagrant up` (libvirt o VirtualBox) | `scripts/ansible-wsl.sh` + `hosts.yml` |
-| Windows + WSL2 | PowerShell: `scripts/setup-windows.ps1`<br>WSL: `bash scripts/setup-linux.sh` | `vagrant up` desde PowerShell | `scripts/ansible-wsl.sh` desde WSL + `hosts.yml` |
+| Windows + WSL2 | PowerShell: `scripts/setup-windows.ps1`<br>WSL: `bash scripts/setup-linux.sh` | `make up` desde WSL (usa `vagrant.exe` si no hay `vagrant` nativo) | `scripts/ansible-wsl.sh` desde WSL + `hosts.yml` |
 | macOS Apple Silicon | `bash scripts/setup-mac.sh` | `bash scripts/lima-up.sh` | `scripts/ansible-lima.sh` + `hosts-lima.yml` |
 
 ## Uso
@@ -75,19 +75,16 @@ make up && make deploy
 
 La aplicación queda en `http://192.168.56.10` en Linux/WSL2. En macOS con Lima, usá la IP de `cp` que `scripts/lima-up.sh` escribe en `ansible/inventory/hosts-lima.yml`.
 
-**Windows + WSL2**: hay que separar responsabilidades porque las VMs viven en el host Windows.
-
-```powershell
-# PowerShell, desde la carpeta del repo
-vagrant up
-```
+**Windows + WSL2**: las VMs viven en el host Windows, pero el flujo se puede manejar completo desde WSL. El `Makefile` detecta que no hay `vagrant` nativo y usa `vagrant.exe` vía WSL interop, así que los comandos principales corren igual que en Linux:
 
 ```bash
-# WSL, desde la misma carpeta
-bash scripts/ansible-wsl.sh
+# WSL, desde la carpeta del repo
+make check
+make up
+make deploy
 ```
 
-El wrapper de WSL copia la clave insegura de Vagrant al home de WSL si hace falta, limpia las host keys de `192.168.56.10-12` y corre el playbook con `ANSIBLE_HOST_KEY_CHECKING=False` e inventario explícito.
+Lo mismo aplica para `make down`, `make scale`, `make descale`, `make status`, `make dashboard` y `make dashboard-down`. El wrapper de WSL copia la clave insegura de Vagrant al home de WSL si hace falta, limpia las host keys de `192.168.56.10-13` y corre el playbook con `ANSIBLE_HOST_KEY_CHECKING=False` e inventario explícito.
 
 ### 2. Verificar el estado del cluster
 
@@ -96,6 +93,15 @@ kubectl --kubeconfig=ansible/k3s.yaml get nodes
 kubectl --kubeconfig=ansible/k3s.yaml get pods -n the-store
 ```
 
+También hay targets de Makefile para las verificaciones habituales:
+
+```bash
+make status
+make k9s
+```
+
+`make k9s` abre la UI de k9s con `KUBECONFIG=ansible/k3s.yaml`.
+
 ### 3. Escalar agregando un worker
 
 ```bash
@@ -103,6 +109,14 @@ make scale
 ```
 
 El target corre `scripts/scale.sh`, que destapa el bloque `#scale#` de worker3 en los archivos que correspondan a la plataforma, levanta la VM (Vagrant o Lima) y ejecuta los plays `01-prepare-nodes` y `03-join-workers` con `--limit worker3`. Al final verifica con `kubectl get node worker3` que el nodo aparezca `Ready`.
+
+Para volver al cluster base de 3 nodos:
+
+```bash
+make descale
+```
+
+El target drena `worker3`, lo borra del cluster, destruye la VM y vuelve a comentar el bloque `#scale#` para que `make scale` pueda repetir la demo desde cero.
 
 ### 4. Teardown completo
 
@@ -116,21 +130,20 @@ make down
 make down && make up && make deploy
 ```
 
-(Windows + WSL2: `vagrant destroy -f && vagrant up` desde PowerShell, después `bash scripts/ansible-wsl.sh` desde WSL.)
+(Windows + WSL2: se puede correr igual desde WSL; `make up`, `make down`, `make scale` y `make descale` usan `vagrant.exe` automáticamente si Vagrant está instalado en Windows.)
 
 ## Demo visual (opcional)
 
-Para presentaciones donde no se quieren mostrar comandos, hay dos dashboards opcionales que se despliegan con un solo comando:
+Para presentaciones donde no se quieren mostrar comandos, hay un dashboard opcional que se despliega con un solo comando:
 
 ```bash
 make dashboard
 ```
 
-Esto corre `ansible/playbooks/07-deploy-dashboards.yml`, que crea el namespace `dashboards` y deja corriendo dos cosas en el control plane (con la misma `toleration` que el ingress):
+Esto corre `ansible/playbooks/07-deploy-dashboards.yml`, que crea el namespace `dashboards` y deja corriendo Headlamp en el control plane (con la misma `toleration` que el ingress):
 
 | Herramienta | URL | Para qué sirve |
 |---|---|---|
-| [kube-ops-view](https://codeberg.org/hjacobs/kube-ops-view) | `http://192.168.56.10:30090/` | Nodos como hexágonos, pods como cuadraditos animados. Ideal para mostrar **Casos 3 y 4** (escalado y teardown) en vivo. |
 | [Headlamp](https://headlamp.dev/) | `http://192.168.56.10:30091/` | UI moderna tipo SaaS. Ideal para mostrar la **estructura del Caso 2**: árbol de workloads, services, ingress. Requiere un token que imprime el playbook al terminar. |
 
 El playbook imprime al final:
@@ -142,8 +155,8 @@ Para bajarlos: `make dashboard-down` (borra el namespace `dashboards`).
 **Sugerencia de demo de 5 min**:
 1. Headlamp abierto: mostrar los 5 microservicios desplegados y sus services.
 2. Browser en `http://192.168.56.10`: la app real funcionando.
-3. kube-ops-view en pantalla principal: `kubectl delete pod -n the-store -l app.kubernetes.io/name=ui` → ver el cuadradito desaparecer y reaparecer.
-4. `make scale` → ver aparecer el nuevo hexágono de worker3 en kube-ops-view.
+3. `kubectl delete pod -n the-store -l app.kubernetes.io/name=ui` → ver en Headlamp cómo Kubernetes recrea el pod.
+4. `make scale` → ver aparecer `worker3` en la vista de nodos de Headlamp.
 5. `make down && make up && make deploy` (Caso 4) → cluster completo cae y vuelve.
 
 ## Casos de uso del TP
@@ -187,12 +200,12 @@ the-store/
 │   ├── playbooks/                # registry → build → prepare → cp → workers → deploy (+ teardown)
 │   └── templates/                # config containerd para registry inseguro
 ├── lima/                         # configs de Lima por VM (cp / worker1-3)
-├── ansible/templates/            # registries.yaml, kube-ops-view.yaml.j2, headlamp.yaml.j2
+├── ansible/templates/            # registries.yaml, headlamp.yaml.j2
 ├── dist/kubernetes.yaml          # manifiestos K8s de los 5 microservicios
 ├── src/                          # código fuente de los microservicios (no modificar)
-├── scripts/                      # setup por SO, wrappers de ansible, lima-up, scale
+├── scripts/                      # setup por SO, wrappers de ansible, lima-up, scale/descale
 ├── docs/                         # documentación de la pre-entrega
 ├── samples/                      # datos de demo
-├── Makefile                      # auto-detecta plataforma → up / deploy / scale / down
+├── Makefile                      # auto-detecta plataforma → up / deploy / scale / descale / down
 └── Vagrantfile                   # define las 3 VMs (+ worker3 opcional)
 ```

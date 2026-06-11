@@ -1,10 +1,10 @@
 # Lima VM config for K3s Control Plane
 # Usage: limactl start --name=cp lima/cp.yaml
 #
-# Networking: vmnet-shared — requires socket_vmnet (same as vagrant-qemu).
+# Networking: vmnet-shared — requires socket_vmnet.
 # Run scripts/setup-mac.sh first.
 
-vmType: vz          # Apple Virtualization.framework (macOS 13+, faster than QEMU)
+vmType: vz          # Apple Virtualization.framework (macOS 13+)
 os: Linux
 arch: aarch64
 
