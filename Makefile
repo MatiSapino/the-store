@@ -26,7 +26,7 @@ REGISTRY_URL  := http://$(REGISTRY_HOST):$(REGISTRY_PORT)
 APP_NAMESPACE := the-store
 SERVICES      := catalog cart orders checkout ui
 
-.PHONY: help up down deploy status teardown clean collections check scale descale k9s \
+.PHONY: help up down deploy status teardown clean collections check scale descale replicas unreplicas k9s \
         dashboard dashboard-down \
         play-01 play-02 play-03 play-04 play-05 play-06
 
@@ -40,6 +40,8 @@ help:
 	@echo "  k9s         Abrir k9s usando ansible/k3s.yaml"
 	@echo "  scale       Levantar worker3 y unirlo al cluster (caso 3)"
 	@echo "  descale     Drenar worker3, destruir la VM y volver al cluster base"
+	@echo "  replicas    Escalar ui=3 y catalog=2 para la demo"
+	@echo "  unreplicas  Volver ui y catalog a 1 replica"
 	@echo "  dashboard   Deployar Headlamp para la demo visual (opcional)"
 	@echo "  dashboard-down  Borrar el namespace de dashboards"
 	@echo "  teardown    Uninstall K3s from VMs (keeps VMs running)"
@@ -149,6 +151,20 @@ scale:
 
 descale:
 	bash scripts/descale.sh
+
+replicas:
+	KUBECONFIG=$(KUBECONFIG) kubectl -n $(APP_NAMESPACE) scale deployment/ui --replicas=3
+	KUBECONFIG=$(KUBECONFIG) kubectl -n $(APP_NAMESPACE) scale deployment/catalog --replicas=2
+	KUBECONFIG=$(KUBECONFIG) kubectl -n $(APP_NAMESPACE) rollout status deployment/ui --timeout=120s
+	KUBECONFIG=$(KUBECONFIG) kubectl -n $(APP_NAMESPACE) rollout status deployment/catalog --timeout=120s
+	KUBECONFIG=$(KUBECONFIG) kubectl -n $(APP_NAMESPACE) get pods -l 'app.kubernetes.io/name in (ui,catalog)' -o wide
+
+unreplicas:
+	KUBECONFIG=$(KUBECONFIG) kubectl -n $(APP_NAMESPACE) scale deployment/ui --replicas=1
+	KUBECONFIG=$(KUBECONFIG) kubectl -n $(APP_NAMESPACE) scale deployment/catalog --replicas=1
+	KUBECONFIG=$(KUBECONFIG) kubectl -n $(APP_NAMESPACE) rollout status deployment/ui --timeout=120s
+	KUBECONFIG=$(KUBECONFIG) kubectl -n $(APP_NAMESPACE) rollout status deployment/catalog --timeout=120s
+	KUBECONFIG=$(KUBECONFIG) kubectl -n $(APP_NAMESPACE) get pods -l 'app.kubernetes.io/name in (ui,catalog)' -o wide
 
 dashboard:
 	bash $(ANSIBLE_SCRIPT) ansible/playbooks/07-deploy-dashboards.yml
