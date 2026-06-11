@@ -6,15 +6,15 @@ Trabajo Práctico — Despliegue y Gestión del Cluster de Kubernetes
 
 ## Arquitectura de la aplicación
 
-![Architecture](/docs/images/architecture.png)
 
-| Servicio | Lenguaje | Descripción |
-|----------|----------|-------------|
-| [UI](./src/ui/) | Java (Spring Boot) | Interfaz web principal |
-| [Catalog](./src/catalog/) | Go | API de catálogo de productos |
-| [Cart](./src/cart/) | Java (Spring Boot) | Gestión del carrito de compras |
-| [Orders](./src/orders/) | Java (Spring Boot) | Procesamiento de órdenes |
-| [Checkout](./src/checkout/) | Node.js (NestJS) | Orquestación del checkout |
+| Servicio                    | Lenguaje           | Descripción                    |
+| --------------------------- | ------------------ | ------------------------------ |
+| [UI](./src/ui/)             | Java (Spring Boot) | Interfaz web principal         |
+| [Catalog](./src/catalog/)   | Go                 | API de catálogo de productos   |
+| [Cart](./src/cart/)         | Java (Spring Boot) | Gestión del carrito de compras |
+| [Orders](./src/orders/)     | Java (Spring Boot) | Procesamiento de órdenes       |
+| [Checkout](./src/checkout/) | Node.js (NestJS)   | Orquestación del checkout      |
+
 
 Todos los servicios usan persistencia en memoria.
 
@@ -22,11 +22,13 @@ Todos los servicios usan persistencia en memoria.
 
 Tres VMs Ubuntu 22.04 LTS gestionadas con Vagrant en Linux/WSL2 o Lima en macOS Apple Silicon. El backend de virtualización depende del SO: libvirt+KVM en Linux nativo (recomendado), VirtualBox en WSL2 y Lima en macOS Apple Silicon.
 
-| Hostname | IP | CPU | RAM | Rol |
-|----------|----|-----|-----|-----|
-| `cp` | 192.168.56.10 | 2 | 2 GB | K3s Control Plane |
-| `worker1` | 192.168.56.11 | 2 | 1.5 GB | K3s Worker |
-| `worker2` | 192.168.56.12 | 2 | 1.5 GB | K3s Worker |
+
+| Hostname  | IP            | CPU | RAM    | Rol               |
+| --------- | ------------- | --- | ------ | ----------------- |
+| `cp`      | 192.168.56.10 | 2   | 2 GB   | K3s Control Plane |
+| `worker1` | 192.168.56.11 | 2   | 1.5 GB | K3s Worker        |
+| `worker2` | 192.168.56.12 | 2   | 1.5 GB | K3s Worker        |
+
 
 El host del operador actúa como registry local de imágenes en `192.168.56.1:5050`.
 
@@ -45,7 +47,7 @@ La automatización corre con **Ansible** desde el host. K3s se instala en modo s
 - [Docker](https://docs.docker.com/get-docker/) (para el registry local y build de imágenes)
 - [kubectl](https://kubernetes.io/docs/tasks/tools/install-kubectl/)
 
-Los scripts en `scripts/setup-*` instalan todo lo de arriba según el SO. Después de correrlos:
+Los scripts en `scripts/setup-`* instalan todo lo de arriba según el SO. Después de correrlos:
 
 ```bash
 make check
@@ -57,11 +59,13 @@ En Linux nativo, `scripts/setup-linux.sh` avisa antes de instalar si detecta dos
 
 Cada SO tiene un script de bootstrap y un wrapper de `ansible-playbook` que ya conoce el inventario correcto. El `Makefile` auto-detecta el sistema y elige el wrapper, así que en la mayoría de los casos alcanza con `make up && make deploy`.
 
-| Plataforma | Bootstrap | VMs | Wrapper Ansible + inventario |
-|---|---|---|---|
-| Linux nativo | `bash scripts/setup-linux.sh` | `vagrant up` (libvirt o VirtualBox) | `scripts/ansible-wsl.sh` + `hosts.yml` |
-| Windows + WSL2 | PowerShell: `scripts/setup-windows.ps1`<br>WSL: `bash scripts/setup-linux.sh` | `make up` desde WSL (usa `vagrant.exe` si no hay `vagrant` nativo) | `scripts/ansible-wsl.sh` desde WSL + `hosts.yml` |
-| macOS Apple Silicon | `bash scripts/setup-mac.sh` | `bash scripts/lima-up.sh` | `scripts/ansible-lima.sh` + `hosts-lima.yml` |
+
+| Plataforma          | Bootstrap                                                                  | VMs                                                                | Wrapper Ansible + inventario                     |
+| ------------------- | -------------------------------------------------------------------------- | ------------------------------------------------------------------ | ------------------------------------------------ |
+| Linux nativo        | `bash scripts/setup-linux.sh`                                              | `vagrant up` (libvirt o VirtualBox)                                | `scripts/ansible-wsl.sh` + `hosts.yml`           |
+| Windows + WSL2      | PowerShell: `scripts/setup-windows.ps1` WSL: `bash scripts/setup-linux.sh` | `make up` desde WSL (usa `vagrant.exe` si no hay `vagrant` nativo) | `scripts/ansible-wsl.sh` desde WSL + `hosts.yml` |
+| macOS Apple Silicon | `bash scripts/setup-mac.sh`                                                | `bash scripts/lima-up.sh`                                          | `scripts/ansible-lima.sh` + `hosts-lima.yml`     |
+
 
 ## Uso
 
@@ -128,7 +132,7 @@ Para mostrar escalado horizontal de workloads sin cambiar el manifiesto base:
 make replicas
 ```
 
-El target sube `ui` a 3 réplicas y `catalog` a 2, espera el rollout de ambos deployments y muestra los pods resultantes. Es útil para verlo en Headlamp o k9s durante la demo.
+El target sube `ui` a 3 réplicas y `catalog` a 2, espera el rollout de ambos deployments y muestra los pods resultantes.
 
 Para volver al estado base:
 
@@ -150,7 +154,7 @@ Para volver al cluster base de 3 nodos:
 make descale
 ```
 
-El target drena `worker3`, lo borra del cluster, destruye la VM y vuelve a comentar el bloque `#scale#` para que `make scale` pueda repetir la demo desde cero.
+El target drena `worker3`, lo borra del cluster, destruye la VM y vuelve a comentar el bloque `#scale#`.
 
 ### 5. Teardown completo
 
@@ -168,7 +172,7 @@ make down && make up && make deploy
 
 ## Demo visual (opcional)
 
-Para presentaciones donde no se quieren mostrar comandos, hay un dashboard opcional que se despliega con un solo comando:
+Tambien hay un dashboard opcional que se despliega con un solo comando:
 
 ```bash
 make dashboard
@@ -176,18 +180,22 @@ make dashboard
 
 Esto corre `ansible/playbooks/07-deploy-dashboards.yml`, que crea el namespace `dashboards` y deja corriendo Headlamp en el control plane (con la misma `toleration` que el ingress):
 
-| Herramienta | URL | Para qué sirve |
-|---|---|---|
+
+| Herramienta                       | URL                           | Para qué sirve                                                                                                                                                       |
+| --------------------------------- | ----------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | [Headlamp](https://headlamp.dev/) | `http://192.168.56.10:30091/` | UI moderna tipo SaaS. Ideal para mostrar la **estructura del Caso 2**: árbol de workloads, services, ingress. Requiere un token que imprime el playbook al terminar. |
 
+
 El playbook imprime al final:
+
 - las URLs exactas según `k3s_node_ip` de tu inventario,
-- el token de Headlamp (un JWT largo — copiarlo entero).
+- el token de Headlamp.
 
 Para bajarlos: `make dashboard-down` (borra el namespace `dashboards`).
 
-**Sugerencia de demo de 5 min**:
-1. Headlamp abierto: mostrar los 5 microservicios desplegados y sus services.
+**Ejemplo de demostración**:
+
+1. Headlamp abierto: ver los 5 microservicios desplegados y sus services.
 2. Browser en `http://192.168.56.10`: la app real funcionando.
 3. `make replicas` → ver cómo `ui` pasa a 3 pods y `catalog` a 2 pods.
 4. `kubectl delete pod -n the-store -l app.kubernetes.io/name=ui` → ver en Headlamp cómo Kubernetes recrea el pod.
@@ -197,13 +205,15 @@ Para bajarlos: `make dashboard-down` (borra el namespace `dashboards`).
 
 ## Casos de uso del TP
 
-| # | Caso | Comando principal | Validación |
-|---|------|-------------------|------------|
-| 1 | Crear cluster desde VMs limpias | `make up && make deploy` | `kubectl get nodes` → 3 nodos Ready |
-| 2 | Desplegar The Store | Incluido en `make deploy` (play 06) | `curl http://192.168.56.10` → UI responde |
-| 3 | Escalado horizontal de aplicación | `make replicas` | `kubectl get pods -n the-store` → más pods de `ui` y `catalog` |
-| 4 | Escalado horizontal de cluster | `make scale` | `kubectl get nodes` → 4 nodos Ready |
-| 5 | Teardown y redespliegue | `make down && make up && make deploy` | Cluster funcional en < 10 min |
+
+| #   | Caso                              | Comando principal                     | Validación                                                     |
+| --- | --------------------------------- | ------------------------------------- | -------------------------------------------------------------- |
+| 1   | Crear cluster desde VMs limpias   | `make up && make deploy`              | `kubectl get nodes` → 3 nodos Ready                            |
+| 2   | Desplegar The Store               | Incluido en `make deploy` (play 06)   | `curl http://192.168.56.10` → UI responde                      |
+| 3   | Escalado horizontal de aplicación | `make replicas`                       | `kubectl get pods -n the-store` → más pods de `ui` y `catalog` |
+| 4   | Escalado horizontal de cluster    | `make scale`                          | `kubectl get nodes` → 4 nodos Ready                            |
+| 5   | Teardown y redespliegue           | `make down && make up && make deploy` | Cluster funcional en < 10 min                                  |
+
 
 ## Tests
 
@@ -246,3 +256,4 @@ the-store/
 ├── Makefile                      # auto-detecta plataforma → up / deploy / replicas / scale / down
 └── Vagrantfile                   # define las 3 VMs (+ worker3 opcional)
 ```
+
