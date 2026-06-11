@@ -7,6 +7,7 @@ cd "$REPO_ROOT"
 UNAME_S="$(uname -s)"
 KUBECONFIG_FILE="ansible/k3s.yaml"
 NODE_NAME="worker3"
+APP_NAMESPACE="the-store"
 
 if [[ "$UNAME_S" == "Darwin" ]]; then
   PROVIDER="lima"
@@ -111,6 +112,38 @@ remove_node_from_cluster() {
   KUBECONFIG="$KUBECONFIG_FILE" kubectl delete node "$NODE_NAME" --ignore-not-found
 }
 
+reset_demo_replicas() {
+  if ! command -v kubectl >/dev/null 2>&1; then
+    echo "(kubectl no instalado: omito reset de replicas de demo)"
+    return
+  fi
+
+  if [[ ! -f "$KUBECONFIG_FILE" ]]; then
+    echo "(no existe $KUBECONFIG_FILE: omito reset de replicas de demo)"
+    return
+  fi
+
+  if ! KUBECONFIG="$KUBECONFIG_FILE" kubectl get namespace "$APP_NAMESPACE" >/dev/null 2>&1; then
+    echo "[OK]  namespace $APP_NAMESPACE no existe; omito reset de replicas de demo"
+    return
+  fi
+
+  echo "=== Volviendo replicas de demo al estado base ==="
+  for deployment in ui catalog; do
+    if KUBECONFIG="$KUBECONFIG_FILE" kubectl -n "$APP_NAMESPACE" get deployment "$deployment" >/dev/null 2>&1; then
+      KUBECONFIG="$KUBECONFIG_FILE" kubectl -n "$APP_NAMESPACE" scale "deployment/$deployment" --replicas=1
+    else
+      echo "[OK]  deployment/$deployment no existe; omito"
+    fi
+  done
+
+  for deployment in ui catalog; do
+    if KUBECONFIG="$KUBECONFIG_FILE" kubectl -n "$APP_NAMESPACE" get deployment "$deployment" >/dev/null 2>&1; then
+      KUBECONFIG="$KUBECONFIG_FILE" kubectl -n "$APP_NAMESPACE" rollout status "deployment/$deployment" --timeout=120s
+    fi
+  done
+}
+
 destroy_worker_vm() {
   case "$PROVIDER" in
     vagrant)
@@ -139,6 +172,7 @@ destroy_worker_vm() {
   esac
 }
 
+reset_demo_replicas
 remove_node_from_cluster
 destroy_worker_vm
 
