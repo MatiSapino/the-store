@@ -198,7 +198,7 @@ Para bajarlos: `make dashboard-down` (borra el namespace `dashboards`).
 1. Headlamp abierto: ver los 5 microservicios desplegados y sus services.
 2. Browser en `http://192.168.56.10`: la app real funcionando.
 3. `make replicas` → ver cómo `ui` pasa a 3 pods y `catalog` a 2 pods.
-4. `kubectl delete pod -n the-store -l app.kubernetes.io/name=ui` → ver en Headlamp cómo Kubernetes recrea el pod.
+4. `KUBECONFIG=ansible/k3s.yaml kubectl delete pod -n the-store -l app.kubernetes.io/name=ui` → ver en Headlamp cómo Kubernetes recrea el pod.
 5. `make scale` → ver aparecer `worker3` en la vista de nodos de Headlamp.
 6. `make unreplicas` y `make descale` → volver al cluster base.
 7. `make down && make up && make deploy` (Caso 5) → cluster completo cae y vuelve.
