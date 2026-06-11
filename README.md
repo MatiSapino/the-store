@@ -1,6 +1,6 @@
-# The Store — Despliegue en Kubernetes con K3s y Ansible
+# The Store | Despliegue en Kubernetes con K3s y Ansible
 
-Trabajo Práctico — Despliegue y Gestión del Cluster de Kubernetes
+Trabajo Práctico - Grupo 1: Despliegue y Gestión del Cluster de Kubernetes
 
 **The Store** es una plataforma de e-commerce construida con arquitectura de microservicios, usada como carga de trabajo de validación para demostrar el ciclo de vida completo de un cluster Kubernetes: creación automatizada, despliegue, escalado y recuperación ante fallos.
 
