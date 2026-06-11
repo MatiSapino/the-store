@@ -31,6 +31,7 @@ make k9s                # abrir k9s con ansible/k3s.yaml
 make dashboard-down     # borrar el namespace dashboards
 
 make down               # destruir las VMs
+make recreate           # down + up + deploy
 ```
 
 ## URLs de demo

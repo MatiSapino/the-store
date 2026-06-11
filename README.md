@@ -165,10 +165,10 @@ make down
 ### Reconstruir desde cero
 
 ```bash
-make down && make up && make deploy
+make recreate
 ```
 
-(Windows + WSL2: se puede correr igual desde WSL; `make up`, `make down`, `make scale` y `make descale` usan `vagrant.exe` automáticamente si Vagrant está instalado en Windows.)
+(Windows + WSL2: se puede correr igual desde WSL; `make up`, `make down`, `make recreate`, `make scale` y `make descale` usan `vagrant.exe` automáticamente si Vagrant está instalado en Windows.)
 
 ## Demo visual (opcional)
 
@@ -201,7 +201,7 @@ Para bajarlos: `make dashboard-down` (borra el namespace `dashboards`).
 4. `KUBECONFIG=ansible/k3s.yaml kubectl delete pod -n the-store -l app.kubernetes.io/name=ui` → ver en Headlamp cómo Kubernetes recrea el pod.
 5. `make scale` → ver aparecer `worker3` en la vista de nodos de Headlamp.
 6. `make unreplicas` y `make descale` → volver al cluster base.
-7. `make down && make up && make deploy` (Caso 5) → cluster completo cae y vuelve.
+7. `make recreate` → cluster completo cae y vuelve.
 
 ## Casos de uso del TP
 
@@ -212,7 +212,7 @@ Para bajarlos: `make dashboard-down` (borra el namespace `dashboards`).
 | 2   | Desplegar The Store               | Incluido en `make deploy` (play 06)   | `curl http://192.168.56.10` → UI responde                      |
 | 3   | Escalado horizontal de aplicación | `make replicas`                       | `kubectl get pods -n the-store` → más pods de `ui` y `catalog` |
 | 4   | Escalado horizontal de cluster    | `make scale`                          | `kubectl get nodes` → 4 nodos Ready                            |
-| 5   | Teardown y redespliegue           | `make down && make up && make deploy` | Cluster funcional en < 10 min                                  |
+| 5   | Teardown y redespliegue           | `make recreate`                       | Cluster funcional en < 10 min                                  |
 
 
 ## Tests

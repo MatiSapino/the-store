@@ -26,7 +26,7 @@ REGISTRY_URL  := http://$(REGISTRY_HOST):$(REGISTRY_PORT)
 APP_NAMESPACE := the-store
 SERVICES      := catalog cart orders checkout ui
 
-.PHONY: help up down deploy status watch teardown clean collections check scale descale replicas unreplicas k9s \
+.PHONY: help up down deploy recreate status watch teardown clean collections check scale descale replicas unreplicas k9s \
         dashboard dashboard-down \
         play-01 play-02 play-03 play-04 play-05 play-06
 
@@ -36,6 +36,7 @@ help:
 	@echo "  up          Bring up all VMs with the detected provider"
 	@echo "  down        Destroy all VMs with the detected provider"
 	@echo "  deploy      Run full Ansible site.yml against running VMs"
+	@echo "  recreate    Teardown + recreate + redeploy"
 	@echo "  status      Show cluster node and pod status"
 	@echo "  watch       Refrescar pods de the-store cada 1s"
 	@echo "  k9s         Abrir k9s usando ansible/k3s.yaml"
@@ -67,6 +68,11 @@ down:
 
 deploy:
 	bash $(ANSIBLE_SCRIPT) $(PLAYBOOK)
+
+recreate:
+	$(MAKE) down
+	$(MAKE) up
+	$(MAKE) deploy
 
 # Run a single playbook: make play P=ansible/playbooks/02-install-control-plane.yml
 play:
